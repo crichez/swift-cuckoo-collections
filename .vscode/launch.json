@@ -1,0 +1,15 @@
+{
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Test CuckooCollections",
+            "program": "/Applications/Xcode.app/Contents/Developer/usr/bin/xctest",
+            "args": [
+                ".build/debug/CuckooCollectionsPackageTests.xctest"
+            ],
+            "cwd": "${workspaceFolder:CuckooCollections}",
+            "preLaunchTask": "swift: Build All"
+        }
+    ]
+}
