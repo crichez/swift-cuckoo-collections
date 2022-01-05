@@ -163,6 +163,23 @@ public struct CuckooSet<Element: FNVHashable> {
         // If we havent found anything yet, return false
         return false
     }
+
+    /// Removes the specified element from the set.
+    public mutating func remove(_ element: Element) {
+        let primaryHash = primaryHash(of: element)
+        let primaryBucket = bucket(for: primaryHash)
+        if contents(ofBucket: primaryBucket)?.hash == primaryHash {
+            buckets[primaryBucket] = .none
+            count -= 1
+        } else {
+            let secondaryHash = secondaryHash(of: element)
+            let secondaryBucket = bucket(for: secondaryHash)
+            if contents(ofBucket: secondaryBucket)?.hash == secondaryHash {
+                buckets[secondaryBucket] = .none
+                count -= 1
+            }
+        }
+    }
 }
 
 extension CuckooSet: Sequence {

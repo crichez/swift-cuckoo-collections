@@ -25,4 +25,13 @@ class CuckooSetTests: XCTestCase {
             cuckooSet.insert(number)
         }
     }
+
+    func testRemove() {
+        var cuckooSet: CuckooSet = ["test"]
+        XCTAssertTrue(cuckooSet.contains("test"))
+        XCTAssertEqual(cuckooSet.count, 1)
+        cuckooSet.remove("test")
+        XCTAssertFalse(cuckooSet.contains("false"))
+        XCTAssertEqual(cuckooSet.count, 0)
+    }
 }
