@@ -5,6 +5,186 @@
 //  Created by Christopher Richez on January 5th, 2021
 //
 
-public struct CuckooSet<Element: Hashable> {
+import FowlerNollVo
 
+/// A set that uses the cuckoo algorithm to insert each member.
+public struct CuckooSet<Element: FNVHashable> {
+    /// A bucket in a `CuckooSet`.
+    enum Bucket {
+        case none
+        case some(UInt64, Element)
+    }
+
+    /// An array of buckets used as storage for the set.
+    var buckets: [Bucket]
+
+    /// Initializes a `CuckooSet` with the provided capacity
+    public init(capacity: Int = 32) {
+        self.buckets = [Bucket](repeating: .none, count: capacity)
+        self.count = 0
+    }
+
+    /// The capacity of the set.
+    public var capacity: Int {
+        buckets.count
+    }
+
+    /// The number of initialized elements in the set.
+    public var count: Int
+
+    /// Computes the primary hash of the provided element.
+    func primaryHash(of element: Element) -> UInt64 {
+        var hasher = FNV1aHasher<UInt64>()
+        hasher.combine(element)
+        return hasher.digest
+    }
+
+    /// Computes the secondary hash of the provided element.
+    func secondaryHash(of element: Element) -> UInt64 {
+        var hasher = FNV1Hasher<UInt64>()
+        hasher.combine(element)
+        return hasher.digest
+    }
+    
+    /// Computes the bucket the provided hash should be stored in.
+    func bucket(for hash: UInt64) -> Int {
+        Int(hash % UInt64(capacity))
+    }
+
+    /// Retrieves the element at the specified bucket, or `nil` if the bucket is empty.
+    func contents(ofBucket bucket: Int) -> (hash: UInt64, element: Element)? {
+        guard bucket < capacity else { fatalError("tried to fetch a bucket out of bounds") }
+        switch buckets[bucket] {
+        case .none:
+            return nil
+        case .some(let hash, let element): 
+            return (hash: hash, element: element)
+        }
+    }
+
+    /// Doubles the number of buckets in the set, and re-hashes everything.
+    mutating func expand(toInsert newElement: Element) {
+        var expandedSet = CuckooSet<Element>(capacity: capacity * 2)
+        for bucket in buckets {
+            switch bucket {
+            case .some(_, let element):
+                expandedSet.insert(element)
+            case .none:
+                continue
+            }
+        }
+        expandedSet.insert(newElement)
+        self = expandedSet
+    }
+
+    /// Moves the element at the source bucket to its alternative location.
+    mutating func bump(from source: Int, toInsert newElement: Element, atPrimaryLocation: Bool, iteration: Int = 0) {
+        /// At iteration 20 we are probably in a loop, so expand the set's storage to reduce the collision rate
+        guard iteration < 20 else { expand(toInsert: newElement); return }
+
+        // Fetch the current contents of the bucket
+        guard let (hash, element) = contents(ofBucket: source) else {
+            fatalError("requested a bump from an empty bucket")
+        }
+
+        // Overwrite it with the new element
+        let newHash = atPrimaryLocation ? primaryHash(of: newElement) : secondaryHash(of: newElement)
+        buckets[source] = .some(newHash, newElement)
+
+        // Find out if the bumped element is at its primary or secondary bucket
+        let primaryHash = primaryHash(of: element)
+        let secondaryHash = secondaryHash(of: element)
+        let bumpToSecondary = hash == primaryHash
+        let newBumpedHash = bumpToSecondary ? secondaryHash : primaryHash
+
+        // Move the element to its alternative bucket
+        let destinationBucket = bucket(for: newBumpedHash)
+        if contents(ofBucket: destinationBucket) == nil {
+            // If the secondary location is empty, insert it directly
+            buckets[destinationBucket] = .some(newBumpedHash, element)
+        } else {
+            // If the secondary location if full, request a bump
+            bump(
+                from: destinationBucket, 
+                toInsert: element, 
+                atPrimaryLocation: !bumpToSecondary, 
+                iteration: iteration + 1)
+        }
+    }
+
+    /// Inserts a new element into the set if it does not already exist.
+    ///
+    /// - Returns: a `Bool` that is false if the element already exists.
+    @discardableResult
+    public mutating func insert(_ newElement: Element) -> Bool {
+        // Get the primary hash and bucket for the new element
+        let primaryHash = primaryHash(of: newElement)
+        let primaryBucket = bucket(for: primaryHash)
+        let hashOfPrimaryElement = contents(ofBucket: primaryBucket)?.hash
+
+        // Get the secondary hash and bucket for the new element
+        let secondaryHash = secondaryHash(of: newElement)
+        let secondaryBucket = bucket(for: secondaryHash)
+        let hashOfSecondaryElement = contents(ofBucket: secondaryBucket)?.hash
+
+        // Check whether an existing element at either bucket has the same hash
+        if hashOfPrimaryElement == primaryHash || hashOfSecondaryElement == secondaryHash {
+            // If so, we are inserting a duplicate
+            return false
+        } else {
+            // If not, check if the primary bucket is free
+            if hashOfPrimaryElement == nil {
+                // If it is, insert it directly
+                buckets[primaryBucket] = .some(primaryHash, newElement)
+            } else {
+                // If it is not, request a bump and insert it later
+                bump(from: primaryBucket, toInsert: newElement, atPrimaryLocation: true)
+            }
+            count += 1
+            return true
+        }
+    }
+
+    /// Returns true if the provided element exists in the set.
+    public func contains(_ element: Element) -> Bool {
+        // Check for a matching hash at the primary bucket first
+        let primaryHash = primaryHash(of: element)
+        let primaryBucket = bucket(for: primaryHash)
+        if contents(ofBucket: primaryBucket)?.hash == primaryHash {
+            return true
+        } else {
+            // If none are found at the primary bucket, then search the secondary bucket.
+            let secondaryHash = secondaryHash(of: element)
+            let secondaryBucket = bucket(for: secondaryHash)
+            if contents(ofBucket: secondaryBucket)?.hash == secondaryHash {
+                return true
+            }
+        }
+        // If we havent found anything yet, return false
+        return false
+    }
+}
+
+extension CuckooSet: Sequence {
+    public func makeIterator() -> IndexingIterator<[Element]> {
+        buckets.compactMap { bucket in
+            switch bucket {
+            case .none:
+                return nil
+            case .some(_, let element):
+                return element
+            }
+        }
+        .makeIterator()
+    }
+}
+
+extension CuckooSet: ExpressibleByArrayLiteral {
+    public init(arrayLiteral elements: Element...) {
+        var cuckooSet = CuckooSet<Element>()
+        for element in elements {
+            cuckooSet.insert(element)
+        }
+        self = cuckooSet
+    }
 }
