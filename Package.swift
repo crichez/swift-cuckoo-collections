@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "CuckooCollections",
+    name: "swift-cuckoo-collections",
     products: [
         // Products define the executables and libraries a package produces, and make them visible to other packages.
         .library(
