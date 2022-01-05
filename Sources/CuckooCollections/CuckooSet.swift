@@ -145,6 +145,14 @@ public struct CuckooSet<Element: FNVHashable> {
         }
     }
 
+    /// Inserts each element of the provided sequence into the set.
+    public mutating func insert<S>(contentsOf newElements: S) 
+    where S : Sequence, S.Element == Element {
+        for element in newElements {
+            insert(element)
+        }
+    }
+
     /// Returns true if the provided element exists in the set.
     public func contains(_ element: Element) -> Bool {
         // Check for a matching hash at the primary bucket first
@@ -180,6 +188,11 @@ public struct CuckooSet<Element: FNVHashable> {
             }
         }
     }
+
+    /// Removes all elements in the set.
+    public mutating func removeAll() {
+        buckets = [Bucket](repeating: .none, count: capacity)
+    }
 }
 
 extension CuckooSet: Sequence {
@@ -202,6 +215,20 @@ extension CuckooSet: ExpressibleByArrayLiteral {
         for element in elements {
             cuckooSet.insert(element)
         }
+        self = cuckooSet
+    }
+
+    public init(_ array: [Element]) {
+        var cuckooSet = CuckooSet<Element>(capacity: array.count * 2)
+        cuckooSet.insert(contentsOf: array)
+        self = cuckooSet
+    }
+}
+
+extension CuckooSet where Element : Hashable {
+    public init(_ otherSet: Set<Element>) {
+        var cuckooSet = CuckooSet<Element>(capacity: otherSet.count * 2)
+        cuckooSet.insert(contentsOf: otherSet)
         self = cuckooSet
     }
 }
