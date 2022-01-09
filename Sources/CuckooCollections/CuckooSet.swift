@@ -280,7 +280,8 @@ public struct CuckooSet<Element: FNVHashable> {
                 buckets[bucket1] = .none
                 count -= 1
             }
-        } else if let (_, elementFound) = contents(ofBucket: bucket2) {
+        } 
+        if let (_, elementFound) = contents(ofBucket: bucket2) {
             let foundHash1 = primaryHash(of: elementFound)
             let foundHash2 = secondaryHash(of: elementFound)
             if foundHash1 == hash1 && foundHash2 == hash2 {
