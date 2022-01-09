@@ -242,19 +242,26 @@ public struct CuckooSet<Element: FNVHashable> {
 
     /// Returns true if the provided element exists in the set.
     public func contains(_ element: Element) -> Bool {
-        // Check for a matching hash at the primary bucket first
-        let primaryHash = primaryHash(of: element)
-        let primaryBucket = bucket(for: primaryHash)
-        if contents(ofBucket: primaryBucket)?.hash == primaryHash {
-            return true
-        } else {
-            // If none are found at the primary bucket, then search the secondary bucket.
-            let secondaryHash = secondaryHash(of: element)
-            let secondaryBucket = bucket(for: secondaryHash)
-            if contents(ofBucket: secondaryBucket)?.hash == secondaryHash {
+        let hash1 = primaryHash(of: element)
+        let bucket1 = bucket(for: hash1)
+        let hash2 = secondaryHash(of: element)
+        let bucket2 = bucket(for: hash2)
+
+        if let (_, elementFound) = contents(ofBucket: bucket1) {
+            let foundHash1 = primaryHash(of: elementFound)
+            let foundHash2 = secondaryHash(of: elementFound)
+            if foundHash1 == hash1 && foundHash2 == hash2 {
                 return true
             }
         }
+        if let (_, elementFound) = contents(ofBucket: bucket2) {
+            let foundHash1 = primaryHash(of: elementFound)
+            let foundHash2 = secondaryHash(of: elementFound)
+            if foundHash1 == hash1 && foundHash2 == hash2 {
+                return true
+            }
+        }
+        
         // If we havent found anything yet, return false
         return false
     }

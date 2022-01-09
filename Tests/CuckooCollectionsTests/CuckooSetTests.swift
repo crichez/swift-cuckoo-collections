@@ -51,6 +51,7 @@ class CuckooSetTests: XCTestCase {
         for number in 1 ... 10_000 {
             // All numbers in this range are unique, so fail if an insertion fails
             XCTAssertTrue(testSet.insert(number), "insertion failed for number \(number)")
+            XCTAssertTrue(testSet.contains(number), "number \(number) failed contains check")
 
             // Keep track of the count to detect any unexpected jumps
             if testSet.count != lastCount + 1 {
