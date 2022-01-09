@@ -261,23 +261,30 @@ public struct CuckooSet<Element: FNVHashable> {
                 return true
             }
         }
-        
+
         // If we havent found anything yet, return false
         return false
     }
 
     /// Removes the specified element from the set.
     public mutating func remove(_ element: Element) {
-        let primaryHash = primaryHash(of: element)
-        let primaryBucket = bucket(for: primaryHash)
-        if contents(ofBucket: primaryBucket)?.hash == primaryHash {
-            buckets[primaryBucket] = .none
-            count -= 1
-        } else {
-            let secondaryHash = secondaryHash(of: element)
-            let secondaryBucket = bucket(for: secondaryHash)
-            if contents(ofBucket: secondaryBucket)?.hash == secondaryHash {
-                buckets[secondaryBucket] = .none
+        let hash1 = primaryHash(of: element)
+        let bucket1 = bucket(for: hash1)
+        let hash2 = secondaryHash(of: element)
+        let bucket2 = bucket(for: hash2)
+
+        if let (_, elementFound) = contents(ofBucket: bucket1) {
+            let foundHash1 = primaryHash(of: elementFound)
+            let foundHash2 = secondaryHash(of: elementFound)
+            if foundHash1 == hash1 && foundHash2 == hash2 {
+                buckets[bucket1] = .none
+                count -= 1
+            }
+        } else if let (_, elementFound) = contents(ofBucket: bucket2) {
+            let foundHash1 = primaryHash(of: elementFound)
+            let foundHash2 = secondaryHash(of: elementFound)
+            if foundHash1 == hash1 && foundHash2 == hash2 {
+                buckets[bucket2] = .none
                 count -= 1
             }
         }
