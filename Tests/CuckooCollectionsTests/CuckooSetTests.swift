@@ -43,7 +43,9 @@ class CuckooSetTests: XCTestCase {
     }
 
     /// Asserts insertions that require expansion still succeed losslessly.
-    func testInsertMany() {
+    /// The sequence of 1 to 10_000 also contains some hash collisions that need to be handled.
+    /// The subsequent deletions are in this test to avoid duplicating work.
+    func testInsertAndRemoveMany() {
         var testSet = CuckooSet<Int>()
         var lastCount = 0
         var lastCapacity = testSet.capacity
@@ -72,14 +74,16 @@ class CuckooSetTests: XCTestCase {
         let countErrorDescription = "expected count of 10,000, but found \(testSet.count)"
         XCTAssertEqual(testSet.count, 10_000, countErrorDescription)
         print("set expanded \(expansionCount) times")
-    }
 
-    func testRemove() {
-        var cuckooSet: CuckooSet = ["test"]
-        XCTAssertTrue(cuckooSet.contains("test"))
-        XCTAssertEqual(cuckooSet.count, 1)
-        cuckooSet.remove("test")
-        XCTAssertFalse(cuckooSet.contains("false"))
-        XCTAssertEqual(cuckooSet.count, 0)
+        for number in 1 ... 10_000 {
+            testSet.remove(number)
+            XCTAssertFalse(testSet.contains(number))
+            if testSet.count != lastCount - 1 {
+                XCTFail("expected count \(lastCount - 1) after removing \(number) but found \(testSet.count)")
+                lastCount = testSet.count
+            } else {
+                lastCount -= 1
+            }
+        }
     }
 }
