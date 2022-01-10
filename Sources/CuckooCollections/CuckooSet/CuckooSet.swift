@@ -334,3 +334,14 @@ extension CuckooSet where Element : Hashable {
         self = cuckooSet
     }
 }
+
+extension CuckooSet: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        var description = "CuckooSet<\(Element.self)>([\n"
+        for element in self {
+            description.append("    \(element),\n")
+        }
+        description.append("])")
+        return description
+    }
+}

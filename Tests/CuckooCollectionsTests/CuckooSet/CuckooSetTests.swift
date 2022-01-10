@@ -86,4 +86,17 @@ class CuckooSetTests: XCTestCase {
             }
         }
     }
+
+    func testDebugDescription() {
+        let testSet: CuckooSet<String> = ["this", "is", "a", "test"]
+        let expectedDescription = """
+        CuckooSet<String>([
+            this,
+            test,
+            a,
+            is,
+        ])
+        """
+        XCTAssertEqual(testSet.debugDescription, expectedDescription)
+    }
 }
