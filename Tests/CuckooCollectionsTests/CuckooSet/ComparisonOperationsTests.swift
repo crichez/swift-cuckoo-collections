@@ -91,8 +91,6 @@ class ComparisonOperationsTests: XCTestCase {
     func testStrictSubset() throws {
         let superset: CuckooSet<Float?> = [nil, 0.0, -9.091, 0.887]
         let subset: CuckooSet<Float?> = [0.0, -9.091, 0.887]
-        #warning("this test is failing if the only difference between the sets is a nil")
-        #warning("this probably has to do with the hash function, need to investigate")
         XCTAssertTrue(subset.isStrictSubset(of: superset), "incorrect strict subset evaluation")
     }
 
@@ -122,8 +120,6 @@ class ComparisonOperationsTests: XCTestCase {
     func testStrictSuperset() throws {
         let superset: CuckooSet<Float?> = [nil, 0.0, -9.091, 0.887]
         let subset: CuckooSet<Float?> = [0.0, -9.091, 0.887]
-        #warning("this test is failing if the only difference between the sets is a nil")
-        #warning("this probably has to do with the hash function, need to investigate")
         XCTAssertTrue(superset.isStrictSuperset(of: subset), "strict superset evaluation failed")
     }
 
