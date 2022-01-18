@@ -1,10 +1,8 @@
 .DS_Store
 .build
-/Packages
-/*.xcodeproj
-xcuserdata/
-DerivedData/
+Packages
+xcuserdata
+DerivedData
 .swiftpm
-.vscode 
-.vscode/launch.json
+.vscode
 Package.resolved
