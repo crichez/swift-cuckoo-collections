@@ -65,6 +65,13 @@ class ComparisonOperationsTests: XCTestCase {
         XCTAssertEqual(set1, set2)
     }
 
+    /// Asserts the presence of `nil` optionals in a set affects its equality to another set.
+    func testEqualityWithNilOptionals() {
+        let set1: CuckooSet<String?> = ["this", "is", "a", "test"]
+        let set2: CuckooSet<String?> = [nil, "this", "is", "a", "test"]
+        XCTAssertNotEqual(set1, set2, "different sets unexpectedly reported equality")
+    }
+
     /// Asserts a set with only some elements in common with another is a subset of that other set.
     func testSubset() throws {
         let superset: CuckooSet<Float?> = [nil, 0.0, -9.091, 0.887]
