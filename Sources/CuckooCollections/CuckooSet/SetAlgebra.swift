@@ -6,6 +6,40 @@
 //
 
 extension CuckooSet: SetAlgebra {
+    public func isSubset(of other: Self) -> Bool {
+        for element in self where !other.contains(element) {
+            return false
+        }
+        return true
+    }
+
+    public func isStrictSubset(of other: Self) -> Bool {
+        guard self != other else { return false }
+        return isSubset(of: other)
+    }
+
+    public func isSuperset(of other: Self) -> Bool {
+        for element in other where !self.contains(element) {
+            return false
+        }
+        return true
+    }
+
+    public func isStrictSuperset(of other: Self) -> Bool {
+        guard self != other else { return false }
+        return isSuperset(of: other)
+    }
+
+    public func isDisjoint(with other: Self) -> Bool {
+        for element in self where other.contains(element) {
+            return false
+        }
+        for element in other where self.contains(element) {
+            return false
+        }
+        return true
+    }
+    
     public mutating func formUnion(_ otherSet: Self) {
         insert(contentsOf: otherSet)
     }

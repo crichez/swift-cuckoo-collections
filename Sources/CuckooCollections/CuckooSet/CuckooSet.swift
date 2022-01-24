@@ -217,3 +217,19 @@ extension CuckooSet: CustomDebugStringConvertible {
         return description
     }
 }
+
+extension CuckooSet: FNVHashable, Equatable {
+    public func hash<Hasher>(into hasher: inout Hasher) where Hasher : FNVHasher {
+        for element in self {
+            hasher.combine(element)
+        }
+    }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        var lhsHasher = FNV1aHasher<UInt64>()
+        var rhsHasher = FNV1aHasher<UInt64>()
+        lhs.hash(into: &lhsHasher)
+        rhs.hash(into: &rhsHasher)
+        return lhsHasher.digest == rhsHasher.digest
+    }
+}
