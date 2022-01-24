@@ -7,55 +7,92 @@
 
 import FowlerNollVo
 
-/// A set that uses the cuckoo algorithm to insert each member.
+/// A set that uses a cuckoo hashing algorithm to insert each member.
+///
+/// `CuckooSet` conforms to `SetAlgebra` and exposes the same API as the Swift standard
+/// library `Set`, but requires that `Element` conform to `FNVHashable`.
 public struct CuckooSet<Element: FNVHashable> {
-    /// A bucket in a `CuckooSet`.
+    /// A value that contains the state of a hash table bucket.
     enum Bucket {
+        /// The bucket is empty.
         case none
+
+        /// The bucket contains a set member.
+        ///
+        /// The value includes the assigned hash value of the member and the member itself.
         case some(UInt64, Element)
     }
 
-    /// An array of buckets used as storage for the set.
+    /// An array of `Bucket` cases used as storage for the set.
     var buckets: [Bucket]
 
-    /// Initializes a `CuckooSet` with the provided capacity
+    /// Initializes an empty `CuckooSet` with the provided capacity.
+    ///
+    /// - Parameter capacity: the number of buckets in the set hash table, defaults to 32
+    ///
+    /// - Note: Unlike `Set`, `CuckooSet` doubles its capacity when `count` reaches half of
+    /// `capacity`. When allocating a set to store a known number of members, request
+    /// a capacity of at least double the number of members.
     public init(capacity: Int = 32) {
         self.buckets = [Bucket](repeating: .none, count: capacity)
         self.count = 0
     }
 
+    /// Initializes an empty set with a default capacity of 32 (16 members).
     public init() {
         self.init(capacity: 32)
     }
 
-    /// The capacity of the set.
+    /// The current capacity of the set.
     public var capacity: Int {
         buckets.count
     }
 
-    /// The number of initialized elements in the set.
+    /// The number of members stored in this set.
     public var count: Int
 
     /// Computes the primary hash of the provided element.
-    func primaryHash(of element: Element) -> UInt64 {
+    ///
+    /// The primary hash uses the FNV-1a hash function with a 64-bit digest.
+    ///
+    /// - Parameter member: the set member to hash
+    ///
+    /// - Returns: The primary hash function digest as an `UInt64`.
+    func primaryHash(of member: Element) -> UInt64 {
         var hasher = FNV1aHasher<UInt64>()
-        hasher.combine(element)
+        hasher.combine(member)
         return hasher.digest
     }
 
     /// Computes the secondary hash of the provided element.
-    func secondaryHash(of element: Element) -> UInt64 {
+    ///
+    /// The secondary hash uses the FNV-1 hash function with a 64-bit digest.
+    ///
+    /// - Parameter member: the set member to hash
+    ///
+    /// - Returns: The secondary hash function digest as an `UInt64`.
+    func secondaryHash(of member: Element) -> UInt64 {
         var hasher = FNV1Hasher<UInt64>()
-        hasher.combine(element)
+        hasher.combine(member)
         return hasher.digest
     }
     
     /// Computes the bucket the provided hash should be stored in.
+    ///
+    /// - Parameter hash: the primary or secondary hash of a set member
+    ///
+    /// - Returns: The bucket the element with the provided hash should be stored in.
     func bucket(for hash: UInt64) -> Int {
         Int(hash % UInt64(capacity))
     }
 
-    /// Retrieves the element at the specified bucket, or `nil` if the bucket is empty.
+    /// Retrieves the contents of the specified bucket.
+    ///
+    /// - bucket: the index of the hash table bucket to retrieve the contents of
+    ///
+    /// - Returns: A tuple where `hash` is either the primary or secondary hash 
+    /// of the stored element, and `element` is the stored element itself. If the bucket
+    /// is empty, returns `nil`.
     func contents(ofBucket bucket: Int) -> (hash: UInt64, element: Element)? {
         guard bucket < capacity else { fatalError("tried to fetch a bucket out of bounds") }
         switch buckets[bucket] {
@@ -75,8 +112,18 @@ public struct CuckooSet<Element: FNVHashable> {
         self = expandedSet
     }
 
-    /// Moves the element at the source bucket to its alternative location and returns true
-    /// once the new element insertion succeeded.
+    /// Clears the specified occupied bucket and inserts a new member in its place.
+    ///
+    /// This method reorganizes the hash table to guarantee the new member can be stored,
+    /// and may call itself recursively up to 20 times before expanding and re-hashing.
+    ///
+    /// - Parameters:
+    ///     - bucket: the bucket to clear and insert the new member into
+    ///     - newMember: the new member to insert at the specified bucket
+    ///     - atPrimaryLocation: whether the new member is being inserted at its primary location
+    ///     - iteration: the number of times `bump` was called for a single insertion
+    ///
+    /// - Returns: A tuple that is the result of calling `insert(_:)` after clearing the bucket.
     mutating func bump(
         bucket: Int, 
         for newMember: Element, 
@@ -119,6 +166,8 @@ public struct CuckooSet<Element: FNVHashable> {
     }
 
     /// Inserts each element of the provided sequence into the set.
+    ///
+    /// This method is equivalent to calling `insert(_:)` for each element in `newElements`.
     public mutating func insert<S>(contentsOf newElements: S) 
     where S : Sequence, S.Element == Element {
         for element in newElements {
@@ -126,23 +175,22 @@ public struct CuckooSet<Element: FNVHashable> {
         }
     }
 
-    /// Returns true if the provided element exists in the set.
-    public func contains(_ element: Element) -> Bool {
-        let hash1 = primaryHash(of: element)
+    public func contains(_ member: Element) -> Bool {
+        let hash1 = primaryHash(of: member)
         let bucket1 = bucket(for: hash1)
-        let hash2 = secondaryHash(of: element)
+        let hash2 = secondaryHash(of: member)
         let bucket2 = bucket(for: hash2)
 
-        if let (_, elementFound) = contents(ofBucket: bucket1) {
-            let foundHash1 = primaryHash(of: elementFound)
-            let foundHash2 = secondaryHash(of: elementFound)
+        if let (_, memberFound) = contents(ofBucket: bucket1) {
+            let foundHash1 = primaryHash(of: memberFound)
+            let foundHash2 = secondaryHash(of: memberFound)
             if foundHash1 == hash1 && foundHash2 == hash2 {
                 return true
             }
         }
-        if let (_, elementFound) = contents(ofBucket: bucket2) {
-            let foundHash1 = primaryHash(of: elementFound)
-            let foundHash2 = secondaryHash(of: elementFound)
+        if let (_, memberFound) = contents(ofBucket: bucket2) {
+            let foundHash1 = primaryHash(of: memberFound)
+            let foundHash2 = secondaryHash(of: memberFound)
             if foundHash1 == hash1 && foundHash2 == hash2 {
                 return true
             }
@@ -153,6 +201,8 @@ public struct CuckooSet<Element: FNVHashable> {
     }
 
     /// Removes all elements in the set.
+    ///
+    /// This method removes all elements by overwriting the set's storage.
     public mutating func removeAll() {
         buckets = [Bucket](repeating: .none, count: capacity)
     }
