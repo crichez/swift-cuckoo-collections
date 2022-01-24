@@ -124,21 +124,21 @@ public struct CuckooSet<Element: FNVHashable> {
     ///
     /// - Returns: a `Bool` that is false if the element already exists.
     @discardableResult
-    public mutating func insert(_ newElement: Element) -> Bool {
+    public mutating func insert(_ newMember: Element) -> Bool {
         // Keep the load factor of the table under 0.5
         guard Float(count) / Float(capacity) < 0.5 else {
-            return expand(toInsert: newElement)
+            return expand(toInsert: newMember)
         }
 
         // Get the primary hash and bucket for the new element
-        let primaryHash = primaryHash(of: newElement)
+        let primaryHash = primaryHash(of: newMember)
         let primaryBucket = bucket(for: primaryHash)
         // Optionally, get the reported hash and element that occupies that bucket
         let hashOfPrimaryElement = contents(ofBucket: primaryBucket)?.hash
         let elementAtPrimaryBucket = contents(ofBucket: primaryBucket)?.element
 
         // Get the secondary hash and bucket for the new element
-        let secondaryHash = secondaryHash(of: newElement)
+        let secondaryHash = secondaryHash(of: newMember)
         let secondaryBucket = bucket(for: secondaryHash)
         // Optionally, get the reported hash and element that occupies that bucket
         let hashOfSecondaryElement = contents(ofBucket: secondaryBucket)?.hash
@@ -162,7 +162,7 @@ public struct CuckooSet<Element: FNVHashable> {
                 // Bump the existing element to its alternative bucket
                 let (bumped, expanded) = bump(
                     from: primaryBucket, 
-                    toInsert: newElement, 
+                    toInsert: newMember, 
                     atPrimaryLocation: isAtPrimaryLocation) 
                 if bumped {
                     if !expanded {
@@ -193,7 +193,7 @@ public struct CuckooSet<Element: FNVHashable> {
                 // Bump the existing element to its alternative bucket
                 let (bumped, expanded) = bump(
                     from: secondaryBucket, 
-                    toInsert: newElement, 
+                    toInsert: newMember, 
                     atPrimaryLocation: isAtPrimaryLocation) 
                 if bumped {
                     if !expanded {
@@ -211,14 +211,14 @@ public struct CuckooSet<Element: FNVHashable> {
             // Check if the primary bucket is free
             if hashOfPrimaryElement == nil {
                 // If it is, insert it directly
-                buckets[primaryBucket] = .some(primaryHash, newElement)
+                buckets[primaryBucket] = .some(primaryHash, newMember)
                 count += 1
                 return true
             } else {
                 // If it is not, request a bump and insert it later
                 let (bumped, expanded) = bump(
                     from: primaryBucket, 
-                    toInsert: newElement, 
+                    toInsert: newMember, 
                     atPrimaryLocation: true)
                 if bumped {
                     if !expanded {
