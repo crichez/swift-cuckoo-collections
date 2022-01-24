@@ -66,46 +66,35 @@ public struct CuckooSet<Element: FNVHashable> {
         }
     }
 
-    /// Doubles the number of buckets in the set, and re-hashes everything.
-    /// Returns true if the new element insertion suceeded.
-    mutating func expand(
-        toInsert newElement: Element
-    ) -> (inserted: Bool, memberAfterInsert: Element) {
+    /// Doubles the number of buckets in the set, then re-inserts every element.
+    mutating func expand() {
         var expandedSet = CuckooSet<Element>(capacity: capacity * 2)
-        for bucket in buckets {
-            switch bucket {
-            case .some(_, let element):
-                expandedSet.insert(element)
-            case .none:
-                continue
-            }
+        for member in self {
+            expandedSet.insert(member)
         }
         self = expandedSet
-        return insert(newElement)
     }
 
     /// Moves the element at the source bucket to its alternative location and returns true
     /// once the new element insertion succeeded.
     mutating func bump(
-        from source: Int, 
-        toInsert newElement: Element, 
+        bucket: Int, 
+        for newMember: Element, 
         atPrimaryLocation: Bool, 
         iteration: Int = 0
-    ) -> (succeeded: Bool, expanded: Bool) {
+    ) -> (inserted: Bool, memberAfterInsert: Element) {
         // At iteration 20 we are probably in a loop, 
         // so expand the set's storage to reduce the collision rate
-        guard iteration < 20 else { 
-            return (succeeded: expand(toInsert: newElement).inserted, expanded: true) 
-        }
+        guard iteration < 20 else { expand(); return insert(newMember) }
 
         // Fetch the current contents of the bucket
-        guard let (hash, element) = contents(ofBucket: source) else {
+        guard let (hash, element) = contents(ofBucket: bucket) else {
             fatalError("requested a bump from an empty bucket")
         }
 
         // Overwrite it with the new element
-        let newHash = atPrimaryLocation ? primaryHash(of: newElement) : secondaryHash(of: newElement)
-        buckets[source] = .some(newHash, newElement)
+        let newHash = atPrimaryLocation ? primaryHash(of: newMember) : secondaryHash(of: newMember)
+        buckets[bucket] = .some(newHash, newMember)
 
         // Find out if the bumped element is at its primary or secondary bucket
         let primaryHash = primaryHash(of: element)
@@ -114,16 +103,16 @@ public struct CuckooSet<Element: FNVHashable> {
         let newBumpedHash = bumpToSecondary ? secondaryHash : primaryHash
 
         // Move the element to its alternative bucket
-        let destinationBucket = bucket(for: newBumpedHash)
+        let destinationBucket = self.bucket(for: newBumpedHash)
         if contents(ofBucket: destinationBucket) == nil {
             // If the secondary location is empty, insert it directly
             buckets[destinationBucket] = .some(newBumpedHash, element)
-            return (true, false)
+            return (true, newMember)
         } else {
             // If the secondary location if full, request a bump
             return bump(
-                from: destinationBucket, 
-                toInsert: element, 
+                bucket: destinationBucket, 
+                for: element, 
                 atPrimaryLocation: !bumpToSecondary, 
                 iteration: iteration + 1)
         }

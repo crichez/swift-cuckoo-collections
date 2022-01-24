@@ -39,7 +39,7 @@ extension CuckooSet: SetAlgebra {
         }
         return true
     }
-    
+
     public mutating func formUnion(_ otherSet: Self) {
         insert(contentsOf: otherSet)
     }
@@ -91,9 +91,7 @@ extension CuckooSet: SetAlgebra {
         _ newMember: Element
     ) -> (inserted: Bool, memberAfterInsert: Element) {
         // Keep the load factor of the table under 0.5
-        guard Float(count) / Float(capacity) < 0.5 else {
-            return expand(toInsert: newMember)
-        }
+        if capacity < count * 2 { expand() }
 
         // Get the primary hash and bucket for the new element
         let primaryHash = primaryHash(of: newMember)
@@ -125,20 +123,8 @@ extension CuckooSet: SetAlgebra {
                 /// Whether the element at the primary bucket is hashed at its primary location.
                 let isAtPrimaryLocation = hash1 == hashOfPrimaryElement
                 // Bump the existing element to its alternative bucket
-                let (bumped, expanded) = bump(
-                    from: primaryBucket, 
-                    toInsert: newMember, 
-                    atPrimaryLocation: isAtPrimaryLocation) 
-                if bumped {
-                    if !expanded {
-                        // Increment the count
-                        count += 1
-                    }
-                    // Return true to indicate the insertion succeeded
-                    return (inserted: true, memberAfterInsert: newMember)
-                } else {
-                    return (inserted: false, memberAfterInsert: existingElement)
-                }
+                count += 1
+                return bump(bucket: primaryBucket, for: newMember, atPrimaryLocation: isAtPrimaryLocation) 
             }
         // Check whether an element exists at the secondary bucket
         // Check whether that element has the same secondary hash as the new element
@@ -156,20 +142,8 @@ extension CuckooSet: SetAlgebra {
                 /// Whether the element at the secondary bucket is hashed at its primary location
                 let isAtPrimaryLocation = hash1 == hashOfSecondaryElement
                 // Bump the existing element to its alternative bucket
-                let (bumped, expanded) = bump(
-                    from: secondaryBucket, 
-                    toInsert: newMember, 
-                    atPrimaryLocation: isAtPrimaryLocation) 
-                if bumped {
-                    if !expanded {
-                        // Increment the count
-                        count += 1
-                    }
-                    // Return true to indicate the insertion succeeded
-                    return (inserted: true, memberAfterInsert: newMember)
-                } else {
-                    return (inserted: false, memberAfterInsert: existingElement)
-                }
+                count += 1
+                return bump(bucket: secondaryBucket, for: newMember, atPrimaryLocation: isAtPrimaryLocation)
             }
         // If neither of the previous patterns matched, the element does not already exist
         } else {
@@ -181,18 +155,8 @@ extension CuckooSet: SetAlgebra {
                 return (inserted: true, memberAfterInsert: newMember)
             } else {
                 // If it is not, request a bump and insert it later
-                let (bumped, expanded) = bump(
-                    from: primaryBucket, 
-                    toInsert: newMember, 
-                    atPrimaryLocation: true)
-                if bumped {
-                    if !expanded {
-                        count += 1
-                    }
-                    return (inserted: true, memberAfterInsert: newMember)
-                } else {
-                    return (inserted: false, memberAfterInsert: newMember)
-                }
+                count += 1
+                return bump(bucket: primaryBucket, for: newMember, atPrimaryLocation: true)
             }
         }
     }
