@@ -24,6 +24,10 @@ public struct CuckooSet<Element: FNVHashable> {
         self.count = 0
     }
 
+    public init() {
+        self.init(capacity: 32)
+    }
+
     /// The capacity of the set.
     public var capacity: Int {
         buckets.count
@@ -64,12 +68,14 @@ public struct CuckooSet<Element: FNVHashable> {
 
     /// Doubles the number of buckets in the set, and re-hashes everything.
     /// Returns true if the new element insertion suceeded.
-    mutating func expand(toInsert newElement: Element) -> Bool {
+    mutating func expand(
+        toInsert newElement: Element
+    ) -> (inserted: Bool, memberAfterInsert: Element) {
         var expandedSet = CuckooSet<Element>(capacity: capacity * 2)
         for bucket in buckets {
             switch bucket {
             case .some(_, let element):
-                guard expandedSet.insert(element) else { return false }
+                expandedSet.insert(element)
             case .none:
                 continue
             }
@@ -86,8 +92,11 @@ public struct CuckooSet<Element: FNVHashable> {
         atPrimaryLocation: Bool, 
         iteration: Int = 0
     ) -> (succeeded: Bool, expanded: Bool) {
-        /// At iteration 20 we are probably in a loop, so expand the set's storage to reduce the collision rate
-        guard iteration < 20 else { return (succeeded: expand(toInsert: newElement), true) }
+        // At iteration 20 we are probably in a loop, 
+        // so expand the set's storage to reduce the collision rate
+        guard iteration < 20 else { 
+            return (succeeded: expand(toInsert: newElement).inserted, expanded: true) 
+        }
 
         // Fetch the current contents of the bucket
         guard let (hash, element) = contents(ofBucket: source) else {
@@ -117,118 +126,6 @@ public struct CuckooSet<Element: FNVHashable> {
                 toInsert: element, 
                 atPrimaryLocation: !bumpToSecondary, 
                 iteration: iteration + 1)
-        }
-    }
-
-    /// Inserts a new element into the set if it does not already exist.
-    ///
-    /// - Returns: a `Bool` that is false if the element already exists.
-    @discardableResult
-    public mutating func insert(_ newMember: Element) -> Bool {
-        // Keep the load factor of the table under 0.5
-        guard Float(count) / Float(capacity) < 0.5 else {
-            return expand(toInsert: newMember)
-        }
-
-        // Get the primary hash and bucket for the new element
-        let primaryHash = primaryHash(of: newMember)
-        let primaryBucket = bucket(for: primaryHash)
-        // Optionally, get the reported hash and element that occupies that bucket
-        let hashOfPrimaryElement = contents(ofBucket: primaryBucket)?.hash
-        let elementAtPrimaryBucket = contents(ofBucket: primaryBucket)?.element
-
-        // Get the secondary hash and bucket for the new element
-        let secondaryHash = secondaryHash(of: newMember)
-        let secondaryBucket = bucket(for: secondaryHash)
-        // Optionally, get the reported hash and element that occupies that bucket
-        let hashOfSecondaryElement = contents(ofBucket: secondaryBucket)?.hash
-        let elementAtSecondaryBucket = contents(ofBucket: secondaryBucket)?.element
-
-        // Check whether an element exists at the primary bucket
-        // Check whether that element has the same primary hash as the new element
-        if let existingElement = elementAtPrimaryBucket, hashOfPrimaryElement == primaryHash {
-            /// The primary hash of the element found at the primary bucket.
-            let hash1 = self.primaryHash(of: existingElement)
-            /// The secondary hash of the element found at the primary bucket.
-            let hash2 = self.secondaryHash(of: existingElement)
-            // Check whether both hashes of the existing element match those of the new element
-            if hash1 == primaryHash && hash2 == secondaryHash {
-                // If so, these are likely the same element
-                return false
-            } else {
-                // If not, these are not the same element
-                /// Whether the element at the primary bucket is hashed at its primary location.
-                let isAtPrimaryLocation = hash1 == hashOfPrimaryElement
-                // Bump the existing element to its alternative bucket
-                let (bumped, expanded) = bump(
-                    from: primaryBucket, 
-                    toInsert: newMember, 
-                    atPrimaryLocation: isAtPrimaryLocation) 
-                if bumped {
-                    if !expanded {
-                        // Increment the count
-                        count += 1
-                    }
-                    // Return true to indicate the insertion succeeded
-                    return true
-                } else {
-                    return false
-                }
-            }
-        // Check whether an element exists at the secondary bucket
-        // Check whether that element has the same secondary hash as the new element
-        } else if let existingElement = elementAtSecondaryBucket, hashOfSecondaryElement == secondaryHash {
-            /// The primary hash of the element found at the secondary bucket.
-            let hash1 = self.primaryHash(of: existingElement)
-            /// The secondary hash of the element found at the secondary bucket.
-            let hash2 = self.secondaryHash(of: existingElement)
-            // Check whether both hashes of the existing element match those of the new element
-            if hash1 == primaryHash && hash2 == secondaryHash {
-                // If so, these are likely the same element
-                return false
-            } else {
-                // If not, these are not the same element
-                /// Whether the element at the secondary bucket is hashed at its primary location
-                let isAtPrimaryLocation = hash1 == hashOfSecondaryElement
-                // Bump the existing element to its alternative bucket
-                let (bumped, expanded) = bump(
-                    from: secondaryBucket, 
-                    toInsert: newMember, 
-                    atPrimaryLocation: isAtPrimaryLocation) 
-                if bumped {
-                    if !expanded {
-                        // Increment the count
-                        count += 1
-                    }
-                    // Return true to indicate the insertion succeeded
-                    return true
-                } else {
-                    return false
-                }
-            }
-        // If neither of the previous patterns matched, the element does not already exist
-        } else {
-            // Check if the primary bucket is free
-            if hashOfPrimaryElement == nil {
-                // If it is, insert it directly
-                buckets[primaryBucket] = .some(primaryHash, newMember)
-                count += 1
-                return true
-            } else {
-                // If it is not, request a bump and insert it later
-                let (bumped, expanded) = bump(
-                    from: primaryBucket, 
-                    toInsert: newMember, 
-                    atPrimaryLocation: true)
-                if bumped {
-                    if !expanded {
-                        count += 1
-                    }
-                    return true
-                } else {
-                    return false
-                }
-            }
         }
     }
 
@@ -264,31 +161,6 @@ public struct CuckooSet<Element: FNVHashable> {
 
         // If we havent found anything yet, return false
         return false
-    }
-
-    /// Removes the specified element from the set.
-    public mutating func remove(_ element: Element) {
-        let hash1 = primaryHash(of: element)
-        let bucket1 = bucket(for: hash1)
-        let hash2 = secondaryHash(of: element)
-        let bucket2 = bucket(for: hash2)
-
-        if let (_, elementFound) = contents(ofBucket: bucket1) {
-            let foundHash1 = primaryHash(of: elementFound)
-            let foundHash2 = secondaryHash(of: elementFound)
-            if foundHash1 == hash1 && foundHash2 == hash2 {
-                buckets[bucket1] = .none
-                count -= 1
-            }
-        } 
-        if let (_, elementFound) = contents(ofBucket: bucket2) {
-            let foundHash1 = primaryHash(of: elementFound)
-            let foundHash2 = secondaryHash(of: elementFound)
-            if foundHash1 == hash1 && foundHash2 == hash2 {
-                buckets[bucket2] = .none
-                count -= 1
-            }
-        }
     }
 
     /// Removes all elements in the set.

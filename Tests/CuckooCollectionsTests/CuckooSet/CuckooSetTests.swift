@@ -25,9 +25,9 @@ class CuckooSetTests: XCTestCase {
     func testNilDifferentFromZero() {
         var testSet = CuckooSet<UInt?>()
         XCTAssertEqual(testSet.count, 0, "expected count of 0 but found \(testSet.count)")
-        XCTAssertTrue(testSet.insert(nil), "inserting first element (nil) failed")
+        XCTAssertTrue(testSet.insert(nil).inserted, "inserting first element (nil) failed")
         XCTAssertEqual(testSet.count, 1, "expected count of 1, but found \(testSet.count)")
-        XCTAssertTrue(testSet.insert(0), "inserting second element (0) failed")
+        XCTAssertTrue(testSet.insert(0).inserted, "inserting second element (0) failed")
         XCTAssertEqual(testSet.count, 2, "expected count of 2 but found \(testSet.count)")
     }
 
@@ -37,7 +37,7 @@ class CuckooSetTests: XCTestCase {
         testSet.insert(true)
         XCTAssertTrue(testSet.contains(true))
         XCTAssertEqual(testSet.count, 1)
-        XCTAssertFalse(testSet.insert(true))
+        XCTAssertFalse(testSet.insert(true).inserted)
         XCTAssertTrue(testSet.contains(true))
         XCTAssertEqual(testSet.count, 1)
     }
@@ -52,7 +52,7 @@ class CuckooSetTests: XCTestCase {
         var expansionCount = 0
         for number in 1 ... 10_000 {
             // All numbers in this range are unique, so fail if an insertion fails
-            XCTAssertTrue(testSet.insert(number), "insertion failed for number \(number)")
+            XCTAssertTrue(testSet.insert(number).inserted, "insertion failed for number \(number)")
             XCTAssertTrue(testSet.contains(number), "number \(number) failed contains check")
 
             // Keep track of the count to detect any unexpected jumps

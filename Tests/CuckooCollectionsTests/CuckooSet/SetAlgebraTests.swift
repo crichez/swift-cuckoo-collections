@@ -12,7 +12,7 @@ class SetAlgebraTests: XCTestCase {
     func testUnion() throws {
         let set1: CuckooSet<String?> = [nil, "one", "two", "three"]
         let set2: CuckooSet<String?> = ["three", "four", "five", nil]
-        let union = set1.union(with: set2)
+        let union = set1.union(set2)
         let expectedSet: CuckooSet<String?> = [nil, "one", "two", "three", "four", "five"]
         XCTAssertEqual(expectedSet, union)
     }
@@ -20,7 +20,7 @@ class SetAlgebraTests: XCTestCase {
     func testIntersection() throws {
         let set1: CuckooSet<String?> = [nil, "one", "two", "three"]
         let set2: CuckooSet<String?> = ["three", "four", "five", nil]
-        let intersection = set1.intersection(with: set2)
+        let intersection = set1.intersection(set2)
         let expectedSet: CuckooSet<String?> = [nil, "three"]
         XCTAssertEqual(expectedSet, intersection)
     }
@@ -28,7 +28,7 @@ class SetAlgebraTests: XCTestCase {
     func testSymmetricDifference() throws {
         let set1: CuckooSet<String?> = [nil, "one", "two", "three"]
         let set2: CuckooSet<String?> = ["three", "four", "five", nil]
-        let symmetricDifference = set1.symmetricDifference(with: set2)
+        let symmetricDifference = set1.symmetricDifference(set2)
         let expectedSet: CuckooSet<String?> = ["one", "two", "four", "five"]
         XCTAssertEqual(expectedSet, symmetricDifference)
     }
