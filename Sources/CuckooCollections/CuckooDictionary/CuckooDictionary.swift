@@ -9,7 +9,16 @@ import FowlerNollVo
 
 // MARK: Storage & Initialization
 
-/// A dictionary where `Key` conforms to `FNVHashable`.
+/// A `Dictionary` equivalent that uses a cuckoo hashing algorithm.
+///
+/// `CuckooDictionary` exposes the same subscript-based API as Swift's `Dictionary`,
+/// along with common methods for more specific use cases:
+/// * `updateValue(forKey:with:)` for updates & insertions only
+/// * `insert(key:value:)` for strict insertions
+/// * `remove(key:)` for strict removals
+///
+/// These additional methods also return useful information on the type of work performed,
+/// which may not be available through subscript mutation.
 public struct CuckooDictionary<Key, Value>: ExpressibleByDictionaryLiteral 
 where Key : FNVHashable {
     /// An array where each element is a tuple containing a hashed key and value, 
@@ -52,11 +61,24 @@ extension CuckooDictionary {
     }
 
     /// Returns the index of the bucket where the provided hashed key should be stored.
+    ///
+    /// - Warning:
+    /// The bucket index returned by this method is dependent upon the capacity of the hash
+    /// table at the time the mathod is called. After `expand()` is called, all previously
+    /// computed bucket indexes are invalid. Attempting insert into or bump from an invalid
+    /// index may result in runtime errors and data loss. 
     func bucket(for hashedKey: UInt64) -> Int {
         Int(hashedKey % UInt64(capacity))
     }
 
     /// Doubles the capacity of the set and re-inserts all key-value pairs.
+    /// 
+    /// This method ensures that the `count` before and after expansion are the same.
+    ///
+    /// - Warning: 
+    /// If expanding during an insertion, note that previously computed bucket indexes are
+    /// rendered invalid by the expansion. Attempting to insert into or bump from a bucket index
+    /// computed before the expansion may result in runtime errors and data loss.
     mutating func expand() {
         var expandedDict = Self(capacity: capacity * 2)
         for (key, value) in self {
@@ -66,6 +88,12 @@ extension CuckooDictionary {
     }
 
     /// Displaces the element at the specified bucket and either moves or returns it.
+    ///
+    /// This method only performs one bump cycle, meaning it won't displace more than one
+    /// element at a time. When the alternative bucket for a displaced item is occupied, the
+    /// displaced element and bucket index are returned for the caller to attempt another bump.
+    /// It is important that the caller keep track of the number of consecutive bumps for a single
+    /// insertion and expand the table as necessary.
     ///
     /// - Parameters: 
     ///     - bucket: the bucket to insert the provided elements at
@@ -108,6 +136,11 @@ extension CuckooDictionary {
 
 extension CuckooDictionary {
     /// The number of available buckets in the hash table.
+    ///
+    /// When inserting new values, `capacity` is doubled if `count`
+    /// exceeds half of the current capacity. This helps reduce the complexity of insertions
+    /// by using more memory as a trade-off. The capacity of the dictionary may also double
+    /// with a lower load factor if a number of consecutive insertions fail.
     public var capacity: Int {
         buckets.count
     }
@@ -300,6 +333,16 @@ extension CuckooDictionary {
         }
     }
 
+    /// Access or mutate the value associated the the provided key.
+    ///
+    /// When using this subscript to remove a key-value pair, passing `nil` as a value
+    /// also removes the key from the dictionary.
+    ///
+    /// - Parameter key: the key for which to update or remove a value
+    ///
+    /// - Returns: 
+    /// If the key exists in the dictionary, returns its associated value.
+    /// If the key does not exist, returns `nil`.
     public subscript(key: Key) -> Value? {
         get {
             // Compute the hashes for this key
