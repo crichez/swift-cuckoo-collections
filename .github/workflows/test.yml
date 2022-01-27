@@ -2,87 +2,52 @@
 
 name: Test
 
-# Run the workflow for every pull request for the main branch, or manually
 on:
-  # Triggers the workflow on push or pull request events but only for the main branch
   pull_request:
     branches: ['**']
 
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   test-ubuntu-20:
-    # The type of runner that the job will run on
     runs-on: ubuntu-20.04
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-
-      # Changes the working directory to the package directory
-      - name: Change Working Directory
-        run: cd $GITHUB_WORKSPACE
-
-      # Tries to build the package, including tests
-      - name: Build
-        run: swift build --build-tests
-        
-      # Tries to run the package test suite
       - name: Test
         run: swift test
 
   test-windows:
-    # Windows Server 2019
     runs-on: windows-2019
-
     steps:
-      # Checkout the repository
       - uses: actions/checkout@v2
-
-      # Test the package
       - uses: MaxDesiatov/swift-windows-action@v1
         with:
           swift-version: "5.5"
 
-  test-apple-platforms:
-    # macOS Big Sur 11.5
+  test-macos:
     runs-on: macos-11
-
     steps:
-      # Checkout the repository
       - uses: actions/checkout@v2
-        
-      # Build the package for macOS
-      - name: Build macOS
-        run: swift build
-
-      # Run the package test suite for macOS
       - name: Test macOS
         run: swift test
 
-      # Build for iOS
-      - name: Build iOS
-        run: xcodebuild -scheme swift-cuckoo-collections -destination "platform=iOS Simulator,name=iPhone 12,OS=15.0"
-
-      # Test on iOS
+  test-ios:
+    runs-on: macos-11
+    steps:
+      - uses: actions/checkout@v2
       - name: Test iOS
         run: xcodebuild test -scheme swift-cuckoo-collections -destination "platform=iOS Simulator,name=iPhone 12,OS=15.0"
 
-      # Build for watchOS
-      - name: Build watchOS
-        run: xcodebuild -scheme swift-cuckoo-collections -destination "platform=watchOS Simulator,name=Apple Watch Series 6 - 44mm,OS=8.0"
-
-      # Test on watchOS
+  test-watchos:
+    runs-on: macos-11
+    steps:
+      - uses: actions/checkout@v2
       - name: Test watchOS
         run: xcodebuild test -scheme swift-cuckoo-collections -destination "platform=watchOS Simulator,name=Apple Watch Series 6 - 44mm,OS=8.0"
 
-      # Build for tvOS
-      - name: Build tvOS
-        run: xcodebuild -scheme swift-cuckoo-collections -destination "platform=tvOS Simulator,name=Apple TV 4K,OS=15.0"
-
-      # Test on tvOS
+  test-tvos:
+    runs-on: macos-11
+    steps:
+      - uses: actions/checkout@v2
       - name: Test tvOS
         run: xcodebuild test -scheme swift-cuckoo-collections -destination "platform=tvOS Simulator,name=Apple TV 4K,OS=15.0"
