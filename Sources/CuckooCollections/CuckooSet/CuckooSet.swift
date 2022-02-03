@@ -48,7 +48,7 @@ public struct CuckooSet<Element: FNVHashable> {
     ///
     /// - Returns: The primary hash function digest as an `UInt64`.
     func primaryHash(of member: Element) -> UInt64 {
-        var hasher = FNV1aHasher<UInt64>()
+        var hasher = FNV64a()
         hasher.combine(member)
         return hasher.digest
     }
@@ -61,7 +61,7 @@ public struct CuckooSet<Element: FNVHashable> {
     ///
     /// - Returns: The secondary hash function digest as an `UInt64`.
     func secondaryHash(of member: Element) -> UInt64 {
-        var hasher = FNV1Hasher<UInt64>()
+        var hasher = FNV64()
         hasher.combine(member)
         return hasher.digest
     }
@@ -205,8 +205,8 @@ extension CuckooSet: FNVHashable, Equatable {
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        var lhsHasher = FNV1aHasher<UInt64>()
-        var rhsHasher = FNV1aHasher<UInt64>()
+        var lhsHasher = FNV64a()
+        var rhsHasher = FNV64a()
         lhs.hash(into: &lhsHasher)
         rhs.hash(into: &rhsHasher)
         return lhsHasher.digest == rhsHasher.digest
