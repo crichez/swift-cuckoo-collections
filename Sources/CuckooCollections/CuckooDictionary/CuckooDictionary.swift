@@ -48,14 +48,14 @@ where Key : FNVHashable {
 extension CuckooDictionary {
     /// Returns the hash of the provided key using the primary hash function.
     func primaryHash(of key: Key) -> UInt64 {
-        var hasher = FNV1aHasher<UInt64>()
+        var hasher = FNV64a()
         hasher.combine(key)
         return hasher.digest
     }
 
     /// Returns the hash of the provided key using the secondary hash function.
     func secondaryHash(of key: Key) -> UInt64 {
-        var hasher = FNV1Hasher<UInt64>()
+        var hasher = FNV64()
         hasher.combine(key)
         return hasher.digest
     }
