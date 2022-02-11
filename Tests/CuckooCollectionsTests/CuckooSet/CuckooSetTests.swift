@@ -99,4 +99,72 @@ class CuckooSetTests: XCTestCase {
         """
         XCTAssertEqual(testSet.debugDescription, expectedDescription)
     }
+    
+    /// Asserts `CuckooSet.Iterator` returns all members previously inserted into the set
+    /// before returning `nil`.
+    func testIteratorReturnsAllMembers() {
+        let testSet: CuckooSet<Int> = [0, 1, 2, 3, 4, 5]
+        var testSetMembers: [Int] = []
+        for member in testSet {
+            testSetMembers.append(member)
+        }
+        XCTAssertEqual(testSet.count, 6)
+        XCTAssertEqual(testSetMembers.count, 6)
+        for member in testSetMembers {
+            XCTAssertTrue(testSet.contains(member))
+        }
+    }
+    
+    /// Measures the performance of the `insert(_:)` method.
+    ///
+    /// This method declares an amortized complexity of `O(1)`.
+    /// An individual operation may report `O(n)` complexity if hash table expansion is required.
+    func testInsertPerformance() {
+        // Get a list of 1000 unique values
+        var uniqueMembers = CuckooSet<Int>(capacity: 2048)
+        for _ in 0 ... 1000 {
+            var random = Int.random(in: .min ... .max)
+            while uniqueMembers.contains(random) {
+                random = .random(in: .min ... .max)
+            }
+            uniqueMembers.insert(random)
+        }
+        
+        // Copy each element into a ContiguousArray
+        let uniqueMemberList = ContiguousArray(uniqueMembers)
+        // Get an iterator for that array to avoid overhead of iterating over empty buckets
+        var iterator = uniqueMemberList.makeIterator()
+        
+        // Initialize an empty set with a capacity of 32 and set up the test loop
+        var testSet: CuckooSet<Int> = []
+        let options = XCTMeasureOptions()
+        options.iterationCount = 1000
+        
+        // Insert 1000 unique members into the set
+        measure(metrics: [XCTClockMetric()], options: options) {
+            testSet.insert(iterator.next()!)
+        }
+    }
+    
+    /// Measures the performance of the `contains(_:)` method.
+    ///
+    /// This method declares a complexity of `O(n)`
+    func testContainsPerformance() {
+        // Get a list of 1000 unique values
+        var uniqueMembers: CuckooSet<Int> = []
+        for _ in 0 ... 1000 {
+            var random = Int.random(in: .min ... .max)
+            while uniqueMembers.contains(random) {
+                random = .random(in: .min ... .max)
+            }
+            uniqueMembers.insert(random)
+        }
+        let uniqueMemberList = ContiguousArray(uniqueMembers)
+        var iterator = uniqueMemberList.makeIterator()
+        let options = XCTMeasureOptions()
+        options.iterationCount = 1000
+        measure(metrics: [XCTClockMetric()], options: options) {
+            let _ = uniqueMembers.contains(iterator.next()!)
+        }
+    }
 }
