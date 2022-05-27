@@ -6,3 +6,5 @@ DerivedData
 .swiftpm
 .vscode
 Package.resolved
+results
+chart.png
