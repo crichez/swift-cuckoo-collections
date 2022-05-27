@@ -7,38 +7,43 @@
 
 import FowlerNollVo
 
-/// A set that uses a cuckoo hashing algorithm to insert each member.
+// MARK: Storage & Initialization
+
+/// A set variant that uses a cuckoo hashing algorithm.
 ///
 /// `CuckooSet` conforms to `SetAlgebra` and exposes the same API as the Swift standard
-/// library `Set`, but requires that `Element` conform to `FNVHashable`.
+/// library `Set`, but requires that `Element` conform to `FNVHashable` since this set needs
+/// to use two different hash functions.
 public struct CuckooSet<Element: FNVHashable> {
-    /// An array of `Bucket` cases used as storage for the set.
+    /// An `Array` of `Optional<Element>` values to use as storage for the set.
+    ///
+    /// Each optional element is a bucket, where `nil` means the bucket is empty.
     var buckets: [Element?]
+
+    /// The number of members contained in this set.
+    public var count: Int
 
     /// Initializes an empty `CuckooSet` with the provided capacity.
     ///
     /// - Parameter capacity: the number of buckets in the set hash table, defaults to 32
     ///
-    /// - Note: Unlike `Set`, `CuckooSet` doubles its capacity when `count` reaches half of
-    /// `capacity`. When allocating a set to store a known number of members, request
-    /// a capacity of at least double the number of members.
+    /// - Note: `CuckooSet` doubles its capacity when `count` reaches roughly half of `capacity`.
+    /// When allocating a set to store a known number of members,
+    /// request a capacity of at least double the known number of members.
     public init(capacity: Int = 32) {
         self.buckets = [Element?](repeating: nil, count: capacity)
         self.count = 0
     }
 
-    /// Initializes an empty set with a default capacity of 32 (16 members).
-    public init() {
-        self.init(capacity: 32)
-    }
+    // MARK: Cuckoo Internals
 
-    /// The current capacity of the set.
+
+    /// The current number of buckets in the set.
+    ///
+    /// - Note: `CuckooSet` doubles its capacity when `count` reaches roughly half of `capacity`.
     public var capacity: Int {
         buckets.count
     }
-
-    /// The number of members stored in this set.
-    public var count: Int
 
     /// Computes the primary hash of the provided element.
     ///
@@ -76,6 +81,8 @@ public struct CuckooSet<Element: FNVHashable> {
     }
 
     /// Doubles the number of buckets in the set, then re-inserts every element.
+    ///
+    /// - Complexity: `O(n)` where `n` is `count`.
     mutating func expand() {
         var expandedSet = CuckooSet<Element>(capacity: capacity * 2)
         for member in self {
@@ -107,8 +114,7 @@ public struct CuckooSet<Element: FNVHashable> {
         let hash2 = secondaryHash(of: bumpedMember)
         let bucket1 = self.bucket(for: hash1)
         let bucket2 = self.bucket(for: hash2)
-        let isAtBucket1 = bucket1 == bucket
-        let newBucket = isAtBucket1 ? bucket2 : bucket1
+        let newBucket = bucket1 == bucket ? bucket2 : bucket1
         // Check whether the new bucket is occupied
         if buckets[newBucket] == nil {
             buckets[newBucket] = bumpedMember
@@ -118,47 +124,39 @@ public struct CuckooSet<Element: FNVHashable> {
         }
     }
 
-    /// Inserts each element of the provided sequence into the set.
+    // MARK: Convenience
+
+    /// Inserts each element of the provided `Sequence` into the set.
     ///
-    /// This method is equivalent to calling `insert(_:)` for each element in `newElements`.
-    public mutating func insert<S>(contentsOf newElements: S) 
+    /// - Complexity: `O(n)` where `n` is `otherSequence.count`.
+    public mutating func insert<S>(contentsOf otherSequence: S)
     where S : Sequence, S.Element == Element {
-        for element in newElements {
+        for element in otherSequence {
             insert(element)
         }
     }
-
-    public func contains(_ member: Element) -> Bool {
-        // Get the hashes and buckets for the new member
-        let hash1 = primaryHash(of: member)
-        let hash2 = secondaryHash(of: member)
-        let bucket1 = bucket(for: hash1)
-        let bucket2 = bucket(for: hash2)
-        // Check both buckets
-        for bucket in [bucket1, bucket2] {
-            if let memberFound = buckets[bucket] {
-                let foundHash1 = primaryHash(of: memberFound)
-                let foundHash2 = secondaryHash(of: memberFound)
-                if foundHash1 == hash1 && foundHash2 == hash2 {
-                    return true
-                }
-            }
-        }
-        // If we havent found anything yet, return false
-        return false
+    
+    /// Inserts each element of the provided `Collection` into the set.
+    ///
+    /// - Complexity: `O(n)` where `n` is `otherCollection.count`.
+    public init<C: Collection>(_ otherCollection: C) where C.Element == Element {
+        var cuckooSet = CuckooSet<Element>(capacity: otherCollection.count * 2)
+        cuckooSet.insert(contentsOf: otherCollection)
+        self = cuckooSet
     }
 
     /// Removes all elements in the set.
     ///
-    /// This method removes all elements by overwriting the set's storage.
+    /// - Complexity: `O(1)`
     public mutating func removeAll() {
         buckets = [Element?](repeating: nil, count: capacity)
     }
+    
 }
 
 extension CuckooSet: Sequence {
     public func makeIterator() -> IndexingIterator<[Element]> {
-        buckets.compactMap { $0 }.makeIterator()
+        buckets.lazy.compactMap { $0 }.makeIterator()
     }
 }
 
@@ -170,15 +168,12 @@ extension CuckooSet: ExpressibleByArrayLiteral {
         }
         self = cuckooSet
     }
-
-    public init(_ array: [Element]) {
-        var cuckooSet = CuckooSet<Element>(capacity: array.count * 2)
-        cuckooSet.insert(contentsOf: array)
-        self = cuckooSet
-    }
 }
 
 extension CuckooSet where Element : Hashable {
+    /// Initializes a `CuckooSet` by inserting each element in the provided `Set`.
+    ///
+    /// - Complexity: `O(n)` where `n` is `otherSet.count`.
     public init(_ otherSet: Set<Element>) {
         var cuckooSet = CuckooSet<Element>(capacity: otherSet.count * 2)
         cuckooSet.insert(contentsOf: otherSet)

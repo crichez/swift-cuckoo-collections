@@ -6,6 +6,29 @@
 //
 
 extension CuckooSet: SetAlgebra {
+    
+    // MARK: Comparison
+    
+    public func contains(_ member: Element) -> Bool {
+        // Get the hashes and buckets for the new member
+        let hash1 = primaryHash(of: member)
+        let hash2 = secondaryHash(of: member)
+        let bucket1 = bucket(for: hash1)
+        let bucket2 = bucket(for: hash2)
+        // Check both buckets
+        for bucket in [bucket1, bucket2] {
+            if let memberFound = buckets[bucket] {
+                let foundHash1 = primaryHash(of: memberFound)
+                let foundHash2 = secondaryHash(of: memberFound)
+                if foundHash1 == hash1 && foundHash2 == hash2 {
+                    return true
+                }
+            }
+        }
+        // If we havent found anything yet, return false
+        return false
+    }
+
     public func isSubset(of other: Self) -> Bool {
         for element in self where !other.contains(element) {
             return false
@@ -39,6 +62,8 @@ extension CuckooSet: SetAlgebra {
         }
         return true
     }
+    
+    // MARK: Algebra
 
     public mutating func formUnion(_ otherSet: Self) {
         insert(contentsOf: otherSet)
@@ -85,6 +110,8 @@ extension CuckooSet: SetAlgebra {
         copy.subtract(otherSet)
         return copy
     }
+    
+    // MARK: Operations
 
     @discardableResult
     public mutating func insert(
@@ -161,5 +188,14 @@ extension CuckooSet: SetAlgebra {
     @discardableResult
     public mutating func update(with newMember: Element) -> Element? {
         return insert(newMember).memberAfterInsert
+    }
+    
+    /// Initializes an empty set with a default capacity of 32 (16 members).
+    ///
+    /// - Note: `CuckooSet` doubles its capacity when `count` reaches roughly half of `capacity`.
+    /// When allocating a set to store a known number of members,
+    /// request a capacity of at least double the known number of members.
+    public init() {
+        self.init(capacity: 32)
     }
 }
