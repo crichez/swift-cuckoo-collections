@@ -33,10 +33,10 @@ jobs:
         run: swift test
 
       - name: Test iOS
-        run: xcodebuild test -scheme swift-cuckoo-collections -destination "platform=iOS Simulator,name=iPhone 12,OS=15.2"
+        run: xcodebuild test -scheme CuckooCollections -destination "platform=iOS Simulator,name=iPhone 12,OS=15.2"
 
       - name: Test watchOS
-        run: xcodebuild test -scheme swift-cuckoo-collections -destination "platform=watchOS Simulator,name=Apple Watch Series 6 - 44mm,OS=8.3"
+        run: xcodebuild test -scheme CuckooCollections -destination "platform=watchOS Simulator,name=Apple Watch Series 6 - 44mm,OS=8.3"
 
       - name: Test tvOS
-        run: xcodebuild test -scheme swift-cuckoo-collections -destination "platform=tvOS Simulator,name=Apple TV 4K,OS=15.2"
+        run: xcodebuild test -scheme CuckooCollections -destination "platform=tvOS Simulator,name=Apple TV 4K,OS=15.2"
