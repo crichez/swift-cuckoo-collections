@@ -28,4 +28,25 @@ benchmark.add(title: "CuckooSet<Int> Contains", input: [Int].self) { input in
     }
 }
 
+benchmark.add(title: "CuckooDictionary<Int, Bool> Insert", input: [Int].self) { input in 
+    var testDict = CuckooDictionary<Int, Bool>()
+    return { timer in 
+        for value in input {
+            testDict[value] = .random()
+        }
+    }
+}
+
+benchmark.add(title: "CuckooDictionary<Int, Bool> Lookup", input: [Int].self) { input in 
+    var testDict = CuckooDictionary<Int, Bool>(capacity: input.count * 2)
+    for value in input {
+        testDict[value] = .random()
+    }
+    return { timer in 
+        for value in input {
+            blackHole(testDict[value])
+        }
+    }
+}
+
 benchmark.main()
