@@ -27,7 +27,7 @@ jobs:
         if: ${{ matrix.platform == 'windows-latest' }}
         uses: MaxDesiatov/swift-windows-action@v1
         with:
-          swift-version: "5.6.1"
+          swift-version: "5.6"
       - name: Build Sources
         run: swift build
       - name: Build Tests
