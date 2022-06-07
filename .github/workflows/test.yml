@@ -53,7 +53,7 @@ jobs:
     name: Test on ${{ matrix.destinationName }}
     env:
       BUILD_SCHEME: CuckooCollections
-      TEST_SCHEME: swift-cuckoo-collections-Package
+      TEST_SCHEME: swift-cuckoo-collections-Package -target CuckooCollectionsTests
     steps:
     - uses: actions/checkout@v2
     - name: Build Sources
