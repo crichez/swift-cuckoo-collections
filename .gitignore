@@ -6,5 +6,5 @@ DerivedData
 .swiftpm
 .vscode
 Package.resolved
-results
-chart.png
+results.json
+renderedResults.html
