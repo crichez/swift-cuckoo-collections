@@ -50,18 +50,19 @@ jobs:
           destinationName: watchOS 8.3
     name: Test on ${{ matrix.destinationName }}
     env:
-      SCHEME: swift-cuckoo-collections-Package
+      BUILD_SCHEME: CuckooCollections
+      TEST_SCHEME: swift-cuckoo-collections-Package
     steps:
     - uses: actions/checkout@v2
     - name: Build Sources
       run: > 
-        xcodebuild build -scheme $SCHEME 
+        xcodebuild build -scheme $BUILD_SCHEME 
         -destination "${{ matrix.destination }}"
     - name: Build Tests
       run: > 
-        xcodebuild build-for-testing -scheme $SCHEME 
+        xcodebuild build-for-testing -scheme $TEST_SCHEME 
         -destination "${{ matrix.destination }}"
     - name: Run Tests
       run: > 
-        xcodebuild test -scheme $SCHEME
+        xcodebuild test -scheme $TEST_SCHEME
         -destination "${{ matrix.destination }}"
