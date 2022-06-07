@@ -99,4 +99,19 @@ class CuckooSetTests: XCTestCase {
         """
         XCTAssertEqual(testSet.debugDescription, expectedDescription)
     }
+    
+    /// Asserts `CuckooSet.Iterator` returns all members previously inserted into the set
+    /// before returning `nil`.
+    func testIteratorReturnsAllMembers() {
+        let testSet: CuckooSet<Int> = [0, 1, 2, 3, 4, 5]
+        var testSetMembers: [Int] = []
+        for member in testSet {
+            testSetMembers.append(member)
+        }
+        XCTAssertEqual(testSet.count, 6)
+        XCTAssertEqual(testSetMembers.count, 6)
+        for member in testSetMembers {
+            XCTAssertTrue(testSet.contains(member))
+        }
+    }
 }
