@@ -1,11 +1,22 @@
+# Apple utility directory
 .DS_Store
+
+# Build products directory
 .build
+
+# VSCode tasks and launch configurations
 .vscode
+
+# Swift build & resolve output
 Packages
 DerivedData
 Package.resolved
+
+# Benchmark results
 results.json
 renderedResults.html
+
+# Unnecessary XCode information
 .swiftpm/xcode/package.xcworkspace
 .swiftpm/xcode/xcuserdata
 .swiftpm/xcode/xcshareddata/xcbaselines
