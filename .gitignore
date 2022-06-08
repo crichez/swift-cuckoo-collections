@@ -1,10 +1,13 @@
 .DS_Store
 .build
-Packages
-xcuserdata
-DerivedData
-.swiftpm
 .vscode
+Packages
+DerivedData
 Package.resolved
 results.json
 renderedResults.html
+.swiftpm/xcode/package.xcworkspace
+.swiftpm/xcode/xcuserdata
+.swiftpm/xcode/xcshareddata/xcbaselines
+.swiftpm/xcode/xcshareddata/xcschemes/Benchmarks.xcscheme
+.swiftpm/xcode/xcshareddata/xcschemes/swift-cuckoo-collections-Package.xcscheme
