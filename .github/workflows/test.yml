@@ -1,17 +1,27 @@
+# The test workflow builds the project and tests it on all supported platforms.
 name: Test
+
 on:
+  # Run this workflow for each pull request that targets the master branch.
   pull_request:
     branches: [master]
+
+  # If your pull request doesn't target master, you can still run this from the Actions tab.
   workflow_dispatch:
 
 jobs:
+  # The job matrix for desktop and server platforms.
   test-standard-platforms:
+
+    # The matrix strategy for this job.
     strategy:
       matrix:
+        # Platforms are named after the GitHub Actions hosted runner identifiers.
         platform:
         - ubuntu-latest
         - macos-latest
         - windows-latest
+        # Include a platform name for each runner.
         include:
         - platform: ubuntu-latest
           name: Ubuntu 20.04
@@ -19,30 +29,45 @@ jobs:
           name: macOS 11
         - platform: windows-latest
           name: Windows Server 2022
+
+    # Name each job after the platform it is running on. 
     name: Test on ${{ matrix.name }}
     runs-on: ${{ matrix.platform }}
+
     steps: 
+      # Checkout the project.
       - uses: actions/checkout@v2
+      # If we are on Windows, install Swift.
       - name: Install Swift
         if: ${{ matrix.platform == 'windows-latest' }}
         uses: MaxDesiatov/swift-windows-action@v1
         with:
+          # There currently is a problem running 5.6.1 on Windows, so use 5.6.
           swift-version: "5.6"
+      # Build sources first.
       - name: Build Sources
         run: swift build
+      # Build tests next.
       - name: Build Tests
         run: swift build --build-tests
+      # Run the test suite.
       - name: Run Tests
         run: swift test
   
-  test-mobile-platforms:
+  # The job matrix for Apple platforms.
+  test-apple-platforms:
+    # Use the latest macos runner.
     runs-on: macos-latest
+
+    # The matric strategy.
     strategy:
       matrix:
+        # The xcodebuild destination identifier for each platform.
         destination:
         - "platform=iOS Simulator,name=iPhone 12,OS=15.2"
         - "platform=tvOS Simulator,name=Apple TV 4K,OS=15.2"
         - "platform=watchOS Simulator,name=Apple Watch Series 6 - 44mm,OS=8.3"
+        # Include a readable name for each platform.
         include:
         - destination: "platform=iOS Simulator,name=iPhone 12,OS=15.2"
           destinationName: iOS 15.2
@@ -50,21 +75,29 @@ jobs:
           destinationName: tvOS 15.2
         - destination: "platform=watchOS Simulator,name=Apple Watch Series 6 - 44mm,OS=8.3"
           destinationName: watchOS 8.3
+  
+    # Name each job according to the platform.
     name: Test on ${{ matrix.destinationName }}
+
+    # Set the scheme name as an environment variable so it can be changed easily.
     env:
-      BUILD_SCHEME: CuckooCollections
-      TEST_SCHEME: swift-cuckoo-collections-Package -target CuckooCollectionsTests
+      SCHEME: CuckooCollections
+
     steps:
+    # Checkout the project.
     - uses: actions/checkout@v2
+    # Build sources.
     - name: Build Sources
       run: > 
-        xcodebuild build -scheme $BUILD_SCHEME 
+        xcodebuild build -scheme $SCHEME 
         -destination "${{ matrix.destination }}"
+    # Build tests.
     - name: Build Tests
       run: > 
-        xcodebuild build-for-testing -scheme $TEST_SCHEME 
+        xcodebuild build-for-testing -scheme $SCHEME 
         -destination "${{ matrix.destination }}"
+    # Run tests.
     - name: Run Tests
       run: > 
-        xcodebuild test -scheme $TEST_SCHEME
+        xcodebuild test -scheme $SCHEME
         -destination "${{ matrix.destination }}"
