@@ -17,7 +17,7 @@ extension CuckooSet: SetAlgebra {
         let bucket2 = bucket(for: hash2)
         // Check both buckets
         for bucket in [bucket1, bucket2] {
-            if let memberFound = buckets[bucket] {
+            if let memberFound = contentsOfBucket(at: bucket) {
                 let foundHash1 = primaryHash(of: memberFound)
                 let foundHash2 = secondaryHash(of: memberFound)
                 if foundHash1 == hash1 && foundHash2 == hash2 {
@@ -126,7 +126,7 @@ extension CuckooSet: SetAlgebra {
         let bucket2 = bucket(for: hash2)
         // Check for an existing member at both buckets
         for bucket in [bucket1, bucket2] {
-            if let memberFound = buckets[bucket] {
+            if let memberFound = contentsOfBucket(at: bucket) {
                 let memberFoundHash1 = primaryHash(of: memberFound)
                 let memberFoundHash2 = secondaryHash(of: memberFound)
                 if memberFoundHash1 == hash1 && memberFoundHash2 == hash2 {
@@ -135,9 +135,9 @@ extension CuckooSet: SetAlgebra {
             }
         }
         // If no existing member was found, check the primary bucket
-        if buckets[bucket1] == nil {
+        if contentsOfBucket(at: bucket1) == nil {
             // If it's empty, assign the new member and increment count
-            buckets[bucket1] = newMember
+            overwriteBucket(at: bucket1, with: newMember)
             count += 1
             return (inserted: true, memberAfterInsert: newMember)
         } else {
@@ -171,11 +171,11 @@ extension CuckooSet: SetAlgebra {
         let bucket2 = bucket(for: hash2)
         // Check both buckets
         for bucket in [bucket1, bucket2] {
-            if let memberFound = buckets[bucket] {
+            if let memberFound = contentsOfBucket(at: bucket) {
                 let foundHash1 = primaryHash(of: memberFound)
                 let foundHash2 = secondaryHash(of: memberFound)
                 if foundHash1 == hash1 && foundHash2 == hash2 {
-                    buckets[bucket1] = nil
+                    overwriteBucket(at: bucket, with: nil)
                     count -= 1
                     return member
                 }
