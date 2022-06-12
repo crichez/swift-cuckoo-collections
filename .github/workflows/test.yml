@@ -44,6 +44,7 @@ jobs:
         with:
           # There currently is a problem running 5.6.1 on Windows, so use 5.6.
           swift-version: "5.6"
+          shell-action: swift help
       # Build sources first.
       - name: Build Sources
         run: swift build
