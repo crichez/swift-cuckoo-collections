@@ -18,10 +18,21 @@ public struct CuckooSet<Element: FNVHashable> {
     /// An `Array` of `Optional<Element>` values to use as storage for the set.
     ///
     /// Each optional element is a bucket, where `nil` means the bucket is empty.
-    var buckets: [Element?]
+    var buckets: CuckooStorage<Element>
+
+    /// The theoretical maximum number of members this set can contain.
+    ///
+    /// - Note: `CuckooSet` doubles its capacity when `count` reaches roughly half of `capacity`.
+    internal(set) public var capacity: Int { 
+        get { buckets.capacity }
+        set { buckets.capacity = newValue }
+    }
 
     /// The number of members contained in this set.
-    public var count: Int
+    internal(set) public var count: Int { 
+        get { buckets.count }
+        set { buckets.count = newValue }
+    }
 
     /// Initializes an empty `CuckooSet` with the provided capacity.
     ///
@@ -31,19 +42,10 @@ public struct CuckooSet<Element: FNVHashable> {
     /// When allocating a set to store a known number of members,
     /// request a capacity of at least double the known number of members.
     public init(capacity: Int = 32) {
-        self.buckets = [Element?](repeating: nil, count: capacity)
-        self.count = 0
+        self.buckets = .init(capacity: capacity)
     }
 
     // MARK: Cuckoo Internals
-
-
-    /// The current number of buckets in the set.
-    ///
-    /// - Note: `CuckooSet` doubles its capacity when `count` reaches roughly half of `capacity`.
-    public var capacity: Int {
-        buckets.count
-    }
 
     /// Computes the primary hash of the provided element.
     ///
@@ -91,6 +93,13 @@ public struct CuckooSet<Element: FNVHashable> {
         self = expandedSet
     }
 
+    /// Checks whether the storage is uniquely referenced, and replaces it with a copy if not.
+    mutating func copyOnWrite() {
+        if !isKnownUniquelyReferenced(&buckets) {
+            self.buckets = CuckooStorage(copying: buckets)
+        }
+    }
+
     /// Moves the provided member into the specified bucket, 
     /// and optionally returns the bumped element.
     ///
@@ -103,6 +112,7 @@ public struct CuckooSet<Element: FNVHashable> {
     /// If the alternative bucket for the bumped member is full, 
     /// returns a tuple containing the bumped member and its alternative bucket.
     mutating func bump(bucket: Int, for newMember: Element) -> (member: Element, bucket: Int)? {
+        copyOnWrite()
         // Fetch the current contents of the bucket
         guard let bumpedMember = buckets[bucket] else {
             fatalError("requested a bump from an empty bucket")
@@ -131,6 +141,7 @@ public struct CuckooSet<Element: FNVHashable> {
     /// - Complexity: `O(n)` where `n` is `otherSequence.count`.
     public mutating func insert<S>(contentsOf otherSequence: S)
     where S : Sequence, S.Element == Element {
+        copyOnWrite()
         for element in otherSequence {
             insert(element)
         }
@@ -144,19 +155,28 @@ public struct CuckooSet<Element: FNVHashable> {
         cuckooSet.insert(contentsOf: otherCollection)
         self = cuckooSet
     }
-
-    /// Removes all elements in the set.
-    ///
-    /// - Complexity: `O(1)`
-    public mutating func removeAll() {
-        buckets = [Element?](repeating: nil, count: capacity)
-    }
-    
 }
 
 extension CuckooSet: Sequence {
-    public func makeIterator() -> IndexingIterator<[Element]> {
-        buckets.lazy.compactMap { $0 }.makeIterator()
+    public struct Iterator: IteratorProtocol {
+        let set: CuckooSet
+        var cursor: Int
+
+        public mutating func next() -> Element? {
+            guard cursor < set.capacity else { 
+                return nil 
+            }
+            guard let member = set.buckets[cursor] else {
+                cursor += 1
+                return next()
+            }
+            cursor += 1
+            return member
+        }
+    }
+
+    public func makeIterator() -> Iterator {
+        Iterator(set: self, cursor: 0)
     }
 }
 

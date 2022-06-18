@@ -66,6 +66,7 @@ extension CuckooSet: SetAlgebra {
     // MARK: Algebra
 
     public mutating func formUnion(_ otherSet: Self) {
+        copyOnWrite()
         insert(contentsOf: otherSet)
     }
 
@@ -76,6 +77,7 @@ extension CuckooSet: SetAlgebra {
     }
 
     public mutating func formIntersection(_ otherSet: Self) {
+        copyOnWrite()
         for element in self where !otherSet.contains(element) {
             remove(element)
         }
@@ -88,6 +90,7 @@ extension CuckooSet: SetAlgebra {
     }
 
     public mutating func formSymmetricDifference(_ otherSet: Self) {
+        copyOnWrite()
         for element in otherSet where !self.insert(element).inserted {
             remove(element)
         }
@@ -100,6 +103,7 @@ extension CuckooSet: SetAlgebra {
     }
 
     public mutating func subtract(_ otherSet: Self) {
+        copyOnWrite()
         for element in otherSet {
             remove(element)
         }
@@ -117,6 +121,7 @@ extension CuckooSet: SetAlgebra {
     public mutating func insert(
         _ newMember: Element
     ) -> (inserted: Bool, memberAfterInsert: Element) {
+        copyOnWrite()
         // Keep the load factor of the hash table under 0.5
         if capacity < count * 2 { expand() }
         // Get the hashes and buckets for the new member
@@ -164,6 +169,7 @@ extension CuckooSet: SetAlgebra {
     /// Removes the specified element from the set.
     @discardableResult
     public mutating func remove(_ member: Element) -> Element? {
+        copyOnWrite()
         // Get the hashes and buckets for the member to remove
         let hash1 = primaryHash(of: member)
         let bucket1 = bucket(for: hash1)
@@ -175,7 +181,7 @@ extension CuckooSet: SetAlgebra {
                 let foundHash1 = primaryHash(of: memberFound)
                 let foundHash2 = secondaryHash(of: memberFound)
                 if foundHash1 == hash1 && foundHash2 == hash2 {
-                    buckets[bucket1] = nil
+                    buckets[bucket] = nil
                     count -= 1
                     return member
                 }
