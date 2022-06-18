@@ -23,13 +23,13 @@ public struct CuckooSet<Element: FNVHashable> {
     /// The theoretical maximum number of members this set can contain.
     ///
     /// - Note: `CuckooSet` doubles its capacity when `count` reaches roughly half of `capacity`.
-    public var capacity: Int { 
+    internal(set) public var capacity: Int { 
         get { buckets.capacity }
         set { buckets.capacity = newValue }
     }
 
     /// The number of members contained in this set.
-    public var count: Int { 
+    internal(set) public var count: Int { 
         get { buckets.count }
         set { buckets.count = newValue }
     }
