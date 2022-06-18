@@ -22,14 +22,14 @@ The recommended approach depends on the changes requested.
 ### Implementation Changes
 
 Implementation changes should run two benchmarks to compare the before and after performance
-of a given operation. The following example runs two benchmarks: one on the `main` branch
+of a given operation. The following example runs two benchmarks: one on the `master` branch
 (the before benchmark) and one on the `set-insert-optimization-1` branch (the after
 benchmark).
 
-Navigate, checkout `main` and run 5 cycles of the "CuckooSet<Int> Insert" task:
+Navigate, checkout `master` and run 5 cycles of the "CuckooSet<Int> Insert" task:
 ```
 $ cd swift-cuckoo-collections
-$ git checkout main
+$ git checkout master
 $ swift run -c release Benchmarks run oldResults.json --cycles 5 --filter "CuckooSet<Int> Insert"
 ...
 Finished in 235s
