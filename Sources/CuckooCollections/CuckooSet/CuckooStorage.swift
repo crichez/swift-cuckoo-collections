@@ -8,7 +8,7 @@
 /// Storage for a cuckoo hash table.
 class CuckooStorage<Element> {
     /// The base pointer to the element storage.
-    private let basePointer: UnsafeMutablePointer<Element?>
+    let basePointer: UnsafeMutablePointer<Element?>
     
     /// The number of buckets in the hash table.
     var capacity: Int
@@ -22,6 +22,14 @@ class CuckooStorage<Element> {
         self.basePointer.initialize(repeating: nil, count: capacity)
         self.capacity = capacity
         self.count = 0
+    }
+
+    /// Initializes storage by copying the provided storage.
+    init(copying other: CuckooStorage) {
+        self.basePointer = .allocate(capacity: other.capacity)
+        self.basePointer.initialize(from: other.basePointer, count: other.capacity)
+        self.capacity = other.capacity
+        self.count = other.count
     }
     
     deinit {

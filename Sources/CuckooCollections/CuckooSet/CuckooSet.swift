@@ -18,7 +18,7 @@ public struct CuckooSet<Element: FNVHashable> {
     /// An `Array` of `Optional<Element>` values to use as storage for the set.
     ///
     /// Each optional element is a bucket, where `nil` means the bucket is empty.
-    let buckets: CuckooStorage<Element>
+    var buckets: CuckooStorage<Element>
 
     /// The theoretical maximum number of members this set can contain.
     ///
@@ -93,6 +93,13 @@ public struct CuckooSet<Element: FNVHashable> {
         self = expandedSet
     }
 
+    /// Checks whether the storage is uniquely referenced, and replaces it with a copy if not.
+    mutating func copyOnWrite() {
+        if !isKnownUniquelyReferenced(&buckets) {
+            self.buckets = CuckooStorage(copying: buckets)
+        }
+    }
+
     /// Moves the provided member into the specified bucket, 
     /// and optionally returns the bumped element.
     ///
@@ -105,6 +112,7 @@ public struct CuckooSet<Element: FNVHashable> {
     /// If the alternative bucket for the bumped member is full, 
     /// returns a tuple containing the bumped member and its alternative bucket.
     mutating func bump(bucket: Int, for newMember: Element) -> (member: Element, bucket: Int)? {
+        copyOnWrite()
         // Fetch the current contents of the bucket
         guard let bumpedMember = buckets[bucket] else {
             fatalError("requested a bump from an empty bucket")
@@ -133,6 +141,7 @@ public struct CuckooSet<Element: FNVHashable> {
     /// - Complexity: `O(n)` where `n` is `otherSequence.count`.
     public mutating func insert<S>(contentsOf otherSequence: S)
     where S : Sequence, S.Element == Element {
+        copyOnWrite()
         for element in otherSequence {
             insert(element)
         }
