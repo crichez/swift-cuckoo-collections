@@ -18,15 +18,21 @@ public struct CuckooSet<Element: FNVHashable> {
     /// An `Array` of `Optional<Element>` values to use as storage for the set.
     ///
     /// Each optional element is a bucket, where `nil` means the bucket is empty.
-    var buckets: ManagedBuffer<Void, Element?>
+    let buckets: CuckooStorage<Element>
 
     /// The theoretical maximum number of members this set can contain.
     ///
     /// - Note: `CuckooSet` doubles its capacity when `count` reaches roughly half of `capacity`.
-    public var capacity: Int
+    public var capacity: Int { 
+        get { buckets.capacity }
+        set { buckets.capacity = newValue }
+    }
 
     /// The number of members contained in this set.
-    public var count: Int
+    public var count: Int { 
+        get { buckets.count }
+        set { buckets.count = newValue }
+    }
 
     /// Initializes an empty `CuckooSet` with the provided capacity.
     ///
@@ -36,17 +42,7 @@ public struct CuckooSet<Element: FNVHashable> {
     /// When allocating a set to store a known number of members,
     /// request a capacity of at least double the known number of members.
     public init(capacity: Int = 32) {
-        self.buckets = .create(minimumCapacity: capacity) { managedBuffer in 
-            managedBuffer.withUnsafeMutablePointerToElements { basePointer in 
-                var currentPointer = basePointer
-                for _ in 0..<capacity {
-                    currentPointer.pointee = nil
-                    currentPointer += 1
-                }
-            }
-        }
-        self.capacity = capacity
-        self.count = 0
+        self.buckets = .init(capacity: capacity)
     }
 
     // MARK: Cuckoo Internals
@@ -86,20 +82,6 @@ public struct CuckooSet<Element: FNVHashable> {
         Int(hash % UInt64(capacity))
     }
 
-    /// Returns the contents of the bucket at the specified index.
-    func contentsOfBucket(at bucketIndex: Int) -> Element? {
-        buckets.withUnsafeMutablePointerToElements { basePointer in 
-            basePointer.advanced(by: bucketIndex).pointee
-        }
-    }
-
-    /// Overwrites the contents of the bucket at the specified index with the provided member.
-    func overwriteBucket(at bucketIndex: Int, with member: Element?) {
-        buckets.withUnsafeMutablePointerToElements { basePointer in 
-            basePointer.advanced(by: bucketIndex).pointee = member
-        }
-    }
-
     /// Doubles the number of buckets in the set, then re-inserts every element.
     ///
     /// - Complexity: `O(n)` where `n` is `count`.
@@ -124,11 +106,11 @@ public struct CuckooSet<Element: FNVHashable> {
     /// returns a tuple containing the bumped member and its alternative bucket.
     mutating func bump(bucket: Int, for newMember: Element) -> (member: Element, bucket: Int)? {
         // Fetch the current contents of the bucket
-        guard let bumpedMember = contentsOfBucket(at: bucket) else {
+        guard let bumpedMember = buckets[bucket] else {
             fatalError("requested a bump from an empty bucket")
         }
         // Overwrite the bucket with the new element
-        overwriteBucket(at: bucket, with: newMember)
+        buckets[bucket] = newMember
         // Get the new bucket of the bumped member
         let hash1 = primaryHash(of: bumpedMember)
         let hash2 = secondaryHash(of: bumpedMember)
@@ -136,8 +118,8 @@ public struct CuckooSet<Element: FNVHashable> {
         let bucket2 = self.bucket(for: hash2)
         let newBucket = bucket1 == bucket ? bucket2 : bucket1
         // Check whether the new bucket is occupied
-        if contentsOfBucket(at: newBucket) == nil {
-            overwriteBucket(at: newBucket, with: bumpedMember)
+        if buckets[newBucket] == nil {
+            buckets[newBucket] = bumpedMember
             return nil
         } else {
             return (bumpedMember, newBucket)
@@ -164,15 +146,6 @@ public struct CuckooSet<Element: FNVHashable> {
         cuckooSet.insert(contentsOf: otherCollection)
         self = cuckooSet
     }
-
-    /// Removes all elements in the set.
-    ///
-    /// - Complexity: `O(1)`
-    public mutating func removeAll() {
-        buckets = .create(minimumCapacity: capacity) { _ in }
-        count = 0
-    }
-    
 }
 
 extension CuckooSet: Sequence {
@@ -184,10 +157,7 @@ extension CuckooSet: Sequence {
             guard cursor < set.capacity else { 
                 return nil 
             }
-            let member = set.buckets.withUnsafeMutablePointerToElements { base in 
-                base.advanced(by: cursor).pointee
-            }
-            guard let member = member else {
+            guard let member = set.buckets[cursor] else {
                 cursor += 1
                 return next()
             }
