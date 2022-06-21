@@ -19,20 +19,32 @@ import FowlerNollVo
 ///
 /// These additional methods also return useful information on the type of work performed,
 /// which may not be available through subscript mutation.
-public struct CuckooDictionary<Key, Value>: ExpressibleByDictionaryLiteral 
-where Key : FNVHashable {
+public struct CuckooDictionary<Key: FNVHashable, Value>: ExpressibleByDictionaryLiteral {
     /// An array where each element is a tuple containing a hashed key and value, 
     /// or nil of the bucket is empty.
-    var buckets: [(key: Key, value: Value)?]
+    var buckets: CuckooStorage<(key: Key, value: Value)>
 
     /// The number of key-value pairs in the dictionary.
-    public var count: Int
+    private(set) public var count: Int {
+        get { buckets.count }
+        set { buckets.count = newValue }
+    }
+
+    /// The number of available buckets in the hash table.
+    ///
+    /// When inserting new values, `capacity` is doubled if `count`
+    /// exceeds half of the current capacity. This helps reduce the complexity of insertions
+    /// by using more memory as a trade-off. The capacity of the dictionary may also double
+    /// with a lower load factor if a number of consecutive insertions fail.
+    private(set) public var capacity: Int {
+        get { buckets.capacity }
+        set { buckets.capacity = newValue }
+    }
 
     /// Initializes an empty dictionary with the specified capacity,
     /// or with the default capacity of 32 key-value pairs if none was specified.
     public init(capacity: Int = 32) {
-        self.buckets = .init(repeating: nil, count: capacity)
-        self.count = 0
+        self.buckets = CuckooStorage(capacity: capacity)
     }
 
     public init(dictionaryLiteral elements: (Key, Value)...) {
@@ -69,6 +81,13 @@ extension CuckooDictionary {
     /// index may result in runtime errors and data loss. 
     func bucket(for hashedKey: UInt64) -> Int {
         Int(hashedKey % UInt64(capacity))
+    }
+
+    /// Checks whether the buckets storage is uniquely references, and copies it if not.
+    mutating func copyOnWrite() {
+        if !isKnownUniquelyReferenced(&buckets) {
+            self.buckets = CuckooStorage(copying: buckets)
+        }
     }
 
     /// Doubles the capacity of the set and re-inserts all key-value pairs.
@@ -110,6 +129,7 @@ extension CuckooDictionary {
         forKey key: Key, 
         andValue value: Value
     ) -> (key: Key, value: Value, bucket: Int)? {
+        copyOnWrite()
         // Get the current contents of the bucket
         guard let (bumpedKey, bumpedValue) = buckets[bucket] else {
             fatalError("requested a bump from an empty bucket")
@@ -135,16 +155,6 @@ extension CuckooDictionary {
 // MARK: Public API
 
 extension CuckooDictionary {
-    /// The number of available buckets in the hash table.
-    ///
-    /// When inserting new values, `capacity` is doubled if `count`
-    /// exceeds half of the current capacity. This helps reduce the complexity of insertions
-    /// by using more memory as a trade-off. The capacity of the dictionary may also double
-    /// with a lower load factor if a number of consecutive insertions fail.
-    public var capacity: Int {
-        buckets.count
-    }
-
     /// Updates the value associated with a given key, or inserts it if the key doesn't already
     /// exist.
     ///
@@ -158,6 +168,7 @@ extension CuckooDictionary {
     /// - Returns: Returns `true` if the key didn't already exist.
     @discardableResult
     public mutating func updateValue(forKey key: Key, with newValue: Value) -> Bool {
+        copyOnWrite()
         // Keep the load factor of the dictionary under 0.5
         if capacity < count * 2 { 
             expand()
@@ -231,6 +242,7 @@ extension CuckooDictionary {
     /// - Returns: Returns `true` if the key was removed, `false` if it didn't exist.
     @discardableResult
     public mutating func remove(key: Key) -> Bool {
+        copyOnWrite()
         // Get both hashes of the key
         let hash1 = primaryHash(of: key)
         let hash2 = secondaryHash(of: key)
@@ -271,6 +283,7 @@ extension CuckooDictionary {
     /// - Returns: Returns `true` if the key was inserted, `false` if it already exists.
     @discardableResult
     public mutating func insert(key: Key, value: Value) -> Bool {
+        copyOnWrite()
         // Keep the load factor of the dictionary under 0.5
         if capacity < count * 2 { 
             expand()
@@ -380,7 +393,27 @@ extension CuckooDictionary {
 // MARK: Sequence
 
 extension CuckooDictionary: Sequence {
-    public func makeIterator() -> IndexingIterator<[(key: Key, value: Value)]> {
-        buckets.compactMap { $0 }.makeIterator()
+    public struct Iterator: IteratorProtocol {
+        private let dict: CuckooDictionary
+        private var cursor: Int = 0
+        private var found: Int = 0
+
+        init(_ dict: CuckooDictionary) {
+            self.dict = dict
+        }
+
+        public mutating func next() -> (key: Key, value: Value)? {
+            guard cursor < dict.capacity else { return nil }
+            guard let element = dict.buckets[cursor] else {
+                cursor += 1
+                return next()
+            }
+            cursor += 1
+            return element
+        }
+    }
+
+    public func makeIterator() -> Iterator {
+        Iterator(self)
     }
 }
