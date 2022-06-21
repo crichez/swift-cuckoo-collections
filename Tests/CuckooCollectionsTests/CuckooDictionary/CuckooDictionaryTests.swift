@@ -138,4 +138,24 @@ class CuckooDictionaryTests: XCTestCase {
             }
         }
     }
+
+    /// Asserts the dictionary iterator returns all expected elements.
+    func testIterator() {
+        let dict: CuckooDictionary = [0: 0, 1: 1, 2: 2]
+        var timesFoundZero = 0
+        var timesFoundOne = 0
+        var timesFoundTwo = 0
+        for (key, value) in dict {
+            if key == 0 && value == 0 {
+                timesFoundZero += 1
+            } else if key == 1 && value == 1 {
+                timesFoundOne += 1
+            } else if key == 2 && value == 2 {
+                timesFoundTwo += 1
+            }
+        }
+        XCTAssertEqual(timesFoundZero, 1)
+        XCTAssertEqual(timesFoundOne, 1)
+        XCTAssertEqual(timesFoundTwo, 1)
+    }
 }
