@@ -155,6 +155,11 @@ public struct CuckooSet<Element: FNVHashable> {
         cuckooSet.insert(contentsOf: otherCollection)
         self = cuckooSet
     }
+
+    /// Removes all members in the set and resets the storage to the default size.
+    public mutating func removeAll() {
+        buckets = CuckooStorage(capacity: 32)
+    }
 }
 
 extension CuckooSet: Sequence {

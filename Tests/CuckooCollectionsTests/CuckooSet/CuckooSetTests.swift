@@ -114,4 +114,17 @@ class CuckooSetTests: XCTestCase {
             XCTAssertTrue(testSet.contains(member))
         }
     }
+
+    /// Asserts calling `removeAll()` removes all members are resets storage capacity.
+    func testRemoveAll() {
+        var testSet = CuckooSet<String>(capacity: 64) 
+        testSet.insert(contentsOf: ["this", "is", "a", "test"])
+        XCTAssertEqual(testSet.count, 4)
+        XCTAssertEqual(testSet.capacity, 64)
+        testSet.removeAll()
+        XCTAssertEqual(testSet.count, 0)
+        XCTAssertEqual(testSet.capacity, 32)
+        var iterator = testSet.makeIterator()
+        XCTAssertNil(iterator.next())
+    }
 }
