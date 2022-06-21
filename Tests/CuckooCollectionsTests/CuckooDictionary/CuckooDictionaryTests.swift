@@ -158,4 +158,38 @@ class CuckooDictionaryTests: XCTestCase {
         XCTAssertEqual(timesFoundOne, 1)
         XCTAssertEqual(timesFoundTwo, 1)
     }
+
+    /// Asserts the `keys` sequence of a given dictionary includes the expected keys.
+    /// 
+    /// This test depends on `testIterator` passing.
+    func testKeysSequence() {
+        let dict: CuckooDictionary = [
+            "one": 1,
+            "two": 2,
+            "three": 3,
+        ]
+        let keys = dict.keys
+        var dictIterator = dict.makeIterator()
+        var keysIterator = keys.makeIterator()
+        while let (dictKey, _) = dictIterator.next(), let key = keysIterator.next() {
+            XCTAssertEqual(dictKey, key)
+        }
+    }
+
+    /// Asserts the `values` sequence of a given dictionary includes the expected values.
+    /// 
+    /// This test depends on `testIterator` passing.
+    func testValueSequences() {
+        let dict: CuckooDictionary = [
+            "one": 1,
+            "two": 2,
+            "three": 3,
+        ]
+        let values = dict.values
+        var dictIterator = dict.makeIterator()
+        var valuesIterator = values.makeIterator()
+        while let (_, dictValue) = dictIterator.next(), let value = valuesIterator.next() {
+            XCTAssertEqual(dictValue, value)
+        }
+    }
 }

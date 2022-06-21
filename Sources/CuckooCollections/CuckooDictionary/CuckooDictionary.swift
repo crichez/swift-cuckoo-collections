@@ -417,3 +417,77 @@ extension CuckooDictionary: Sequence {
         Iterator(self)
     }
 }
+
+// MARK: Keys
+
+extension CuckooDictionary {
+    /// A sequence that includes only the keys of a `CuckooDictionary`.
+    public struct Keys: Sequence {
+        let dict: CuckooDictionary
+
+        /// The iterator for the keys of a `CuckooDictionary`.
+        public struct Iterator: IteratorProtocol {
+            let dict: CuckooDictionary
+            var dictIterator: CuckooDictionary.Iterator
+
+            init(_ dict: CuckooDictionary) {
+                self.dict = dict
+                self.dictIterator = dict.makeIterator()
+            }
+
+            /// Returns the next element in the keys sequence, or `nil` after the last key.
+            public mutating func next() -> Key? {
+                dictIterator.next()?.key
+            }
+        }
+        
+        /// Returns an iterator for the keys sequence of this dictionary.
+        public func makeIterator() -> Iterator {
+            Iterator(dict)
+        }
+    }
+
+    /// A sequence that includes only the keys of a `CuckooDictionary`.
+    /// 
+    /// - Complexity: O(1).
+    public var keys: Keys {
+        Keys(dict: self)
+    }
+}
+
+// MARK: Values
+
+extension CuckooDictionary {
+    /// A sequence that includes only the values of a `CuckooDictionary`.
+    public struct Values: Sequence {
+        let dict: CuckooDictionary
+
+        /// The iterator for the values of a `CuckooDictionary`.
+        public struct Iterator: IteratorProtocol {
+            let dict: CuckooDictionary
+            var dictIterator: CuckooDictionary.Iterator
+
+            init(_ dict: CuckooDictionary) {
+                self.dict = dict
+                self.dictIterator = dict.makeIterator()
+            }
+
+            /// Returns the next element in the values sequence, or `nil` after the last value.
+            public mutating func next() -> Value? {
+                dictIterator.next()?.value
+            }
+        }
+        
+        /// Returns an iterator for the values sequence of this dictionary.
+        public func makeIterator() -> Iterator {
+            Iterator(dict)
+        }
+    }
+
+    /// A sequence that includes only the values of a `CuckooDictionary`.
+    /// 
+    /// - Complexity: O(1).
+    public var values: Values {
+        Values(dict: self)
+    }
+}
