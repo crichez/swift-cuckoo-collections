@@ -123,26 +123,29 @@ public struct CuckooSet<Element: FNVHashable> {
     /// Returns `nil` if the new member and bumped member were assigned to a bucket.
     /// If the alternative bucket for the bumped member is full, 
     /// returns a tuple containing the bumped member and its alternative bucket.
-    mutating func bump(bucket: Int, for newMember: Element) -> (member: Element, bucket: Int)? {
-        copyOnWrite()
-        // Fetch the current contents of the bucket
-        guard let bumpedMember = buckets[bucket] else {
-            fatalError("requested a bump from an empty bucket")
-        }
+    mutating func bump(
+        bucketIndex: Int,
+        for newMember: Element
+    ) -> (member: Element, bucket: Int)? {
+        let bucket = buckets.getPointerToBucket(bucketIndex)
+        let currentMember = bucket.pointee!
         // Overwrite the bucket with the new element
-        buckets[bucket] = newMember
-        // Get the new bucket of the bumped member
-        let hash1 = primaryHash(of: bumpedMember)
-        let hash2 = secondaryHash(of: bumpedMember)
-        let bucket1 = self.bucket(for: hash1)
-        let bucket2 = self.bucket(for: hash2)
-        let newBucket = bucket1 == bucket ? bucket2 : bucket1
-        // Check whether the new bucket is occupied
-        if buckets[newBucket] == nil {
-            buckets[newBucket] = bumpedMember
+        bucket.pointee = newMember
+        // Get the alt bucket of the bumped member
+        let altBucketIndex: Int = {
+            if self.bucket(for: primaryHash(of: currentMember)) == bucketIndex {
+                return self.bucket(for: secondaryHash(of: currentMember)) 
+            } else {
+                return bucketIndex
+            } 
+        }()
+        let altBucket = buckets.getPointerToBucket(altBucketIndex)
+        // Check whether the alt bucket is occupied
+        if altBucket.pointee == nil {
+            altBucket.pointee = currentMember
             return nil
         } else {
-            return (bumpedMember, newBucket)
+            return (currentMember, altBucketIndex)
         }
     }
 

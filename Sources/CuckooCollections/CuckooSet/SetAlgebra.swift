@@ -205,12 +205,11 @@ extension CuckooSet: SetAlgebra {
             // If both buckets are full, we have to bump the primary bucket.
         }
         
-        // If it's full, prepare to bump its member
         var bumped = (member: newMember, bucket: bucket1Index)
         // Keep track of the number of consecutive bumps for this insertion
         var bumpCount = 0
         // Keep bumping until the method returns nil
-        while let nextBump = bump(bucket: bumped.bucket, for: bumped.member) {
+        while let nextBump = bump(bucketIndex: bumped.bucket, for: bumped.member) {
             // Expand and retry if we hit 20 consicutive bumps
             guard bumpCount < 20 else {
                 expand()
