@@ -48,15 +48,19 @@ class CuckooStorage<Element> {
         basePointer.deinitialize(count: capacity)
         basePointer.deallocate()
     }
-}
-
-extension CuckooStorage {
+    
+    /// Returns a pointer to the bucket at the specified offset.
+    func getPointerToBucket(_ offset: Int) -> UnsafeMutablePointer<Element?> {
+        basePointer.advanced(by: offset)
+    }
+    
+    /// Returns or overwrites the bucket at the specified offset.
     subscript(_ offset: Int) -> Element? {
         get {
-            basePointer.advanced(by: offset).pointee
+            getPointerToBucket(offset).pointee
         }
         set {
-            basePointer.advanced(by: offset).pointee = newValue
+            getPointerToBucket(offset).pointee = newValue
         }
     }
 }

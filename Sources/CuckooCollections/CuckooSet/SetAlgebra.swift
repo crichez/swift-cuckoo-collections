@@ -136,46 +136,92 @@ extension CuckooSet: SetAlgebra {
         copyOnWrite()
         // Keep the load factor of the hash table under 0.5
         if capacity < count * 2 { expand() }
-        // Get the hashes and buckets for the new member
-        let hash1 = primaryHash(of: newMember)
-        let hash2 = secondaryHash(of: newMember)
-        let bucket1 = bucket(for: hash1)
-        let bucket2 = bucket(for: hash2)
-        // Check for an existing member at both buckets
-        for bucket in [bucket1, bucket2] {
-            if let memberFound = buckets[bucket] {
-                let memberFoundHash1 = primaryHash(of: memberFound)
-                let memberFoundHash2 = secondaryHash(of: memberFound)
-                if memberFoundHash1 == hash1 && memberFoundHash2 == hash2 {
-                    return (inserted: false, memberAfterInsert: memberFound)
+        
+        // Resolve the primary bucket of the new member.
+        let newHash1 = primaryHash(of: newMember)
+        let bucket1Index = bucket(for: newHash1)
+        let bucket1 = buckets.getPointerToBucket(bucket1Index)
+        
+        // A memo for the secondary hash of the new member.
+        var newHash2 = UInt64?.none
+        
+        // Hash memos for the member at the primary bucket of the new member.
+        var current1Hash1 = UInt64?.none
+        var current1Hash2 = UInt64?.none
+        
+        // Check the contents of the primary bucket of the new member.
+        if let currentMember = bucket1.pointee {
+            // Check the primary hash of the member currently at the new member's primary bucket.
+            current1Hash1 = primaryHash(of: currentMember)
+            if current1Hash1 == newHash1 {
+                // If the primary hashes match, also check the secondary hashes.
+                current1Hash2 = secondaryHash(of: currentMember)
+                newHash2 = secondaryHash(of: newMember)
+                if current1Hash2 == newHash2 {
+                    // If the secondary hash also matches, this is the same member.
+                    return (inserted: false, memberAfterInsert: currentMember)
                 }
             }
+        } else {
+            // The primary bucket is empty or didn't match, but we must still check the secondary.
+            // We do no work here, control flow moves to the secondary bucket.
         }
-        // If no existing member was found, check the primary bucket
-        if buckets[bucket1] == nil {
-            // If it's empty, assign the new member and increment count
-            buckets[bucket1] = newMember
+        
+        // Memos for the hashes of the member at the secondary bucket of the new member.
+        var current2Hash1 = UInt64?.none
+        var current2Hash2 = UInt64?.none
+        
+        // Compute the location of the secondary bucket.
+        if newHash2 == nil { newHash2 = secondaryHash(of: newMember) }
+        let bucket2Index = bucket(for: newHash2!)
+        let bucket2 = buckets.getPointerToBucket(bucket2Index)
+        
+        // Check the contents of the secondary bucket.
+        if let currentMember = bucket2.pointee {
+            // Check the primary hash of the member at bucket 2.
+            current2Hash1 = primaryHash(of: currentMember)
+            if current2Hash1 == newHash1 {
+                // If the primary hashes match, also check the secondary hashes.
+                current2Hash2 = secondaryHash(of: currentMember)
+                if current2Hash2 == newHash2! {
+                    // If the secondary hash also matches, this is the same member.
+                    return (inserted: false, memberAfterInsert: currentMember)
+                }
+            }
+        } else {
+            // The secondary bucket is empty or didn't match, so we move to the insert.
+        }
+        
+        // Check for an empty bucket and insert the new member directly.
+        if bucket1.pointee == nil {
+            bucket1.pointee = newMember
+            count += 1
+            return (inserted: true, memberAfterInsert: newMember)
+        } else if bucket2.pointee == nil {
+            bucket2.pointee = newMember
             count += 1
             return (inserted: true, memberAfterInsert: newMember)
         } else {
-            // If it's full, prepare to bump its member
-            var bumped = (member: newMember, bucket: bucket1)
-            // Keep track of the number of consecutive bumps for this insertion
-            var bumpCount = 0
-            // Keep bumping until the method returns nil
-            while let nextBump = bump(bucket: bumped.bucket, for: bumped.member) {
-                // Expand and retry if we hit 20 consicutive bumps
-                guard bumpCount < 20 else {
-                    expand()
-                    return insert(nextBump.member)
-                }
-                bumpCount += 1
-                bumped = nextBump
-            }
-            // Once we are done bumping, increment the count and report success
-            count += 1
-            return (inserted: true, memberAfterInsert: newMember)
+            // If both buckets are full, we have to bump the primary bucket.
         }
+        
+        // If it's full, prepare to bump its member
+        var bumped = (member: newMember, bucket: bucket1Index)
+        // Keep track of the number of consecutive bumps for this insertion
+        var bumpCount = 0
+        // Keep bumping until the method returns nil
+        while let nextBump = bump(bucket: bumped.bucket, for: bumped.member) {
+            // Expand and retry if we hit 20 consicutive bumps
+            guard bumpCount < 20 else {
+                expand()
+                return insert(nextBump.member)
+            }
+            bumpCount += 1
+            bumped = nextBump
+        }
+        // Once we are done bumping, increment the count and report success
+        count += 1
+        return (inserted: true, memberAfterInsert: newMember)
     }
 
     /// Removes the specified element from the set.
