@@ -134,8 +134,6 @@ extension CuckooSet: SetAlgebra {
         _ newMember: Element
     ) -> (inserted: Bool, memberAfterInsert: Element) {
         copyOnWrite()
-        // Keep the load factor of the hash table under 0.5
-        if capacity < count * 2 { expand() }
         
         // Resolve the primary bucket of the new member.
         let newHash1 = primaryHash(of: newMember)
