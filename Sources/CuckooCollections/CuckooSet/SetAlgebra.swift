@@ -211,7 +211,7 @@ extension CuckooSet: SetAlgebra {
         // Keep bumping until the method returns nil
         while let nextBump = bump(bucketIndex: bumped.bucket, for: bumped.member) {
             // Expand and retry if we hit 20 consicutive bumps
-            guard bumpCount < 20 else {
+            guard bumpCount < count / 10 else {
                 expand()
                 return insert(nextBump.member)
             }
