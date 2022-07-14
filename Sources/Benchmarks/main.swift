@@ -21,25 +21,36 @@ import CuckooCollections
 
 var benchmark = Benchmark(title: "CuckooCollections Benchmark")
 
-benchmark.add(title: "CuckooSet<Int> Insert", input: [Int].self) { input in
+// MARK: CuckooSet
+
+benchmark.add(title: "set/insert", input: [Int].self) { input in
     var testSet = CuckooSet<Int>()
     return { timer in 
         for value in input {
-            testSet.insert(value)
+            blackHole(testSet.insert(value).inserted)
         }
     }
 }
 
-benchmark.add(title: "CuckooSet<Int> Contains", input: [Int].self) { input in 
+benchmark.add(title: "set/contains", input: [Int].self) { input in
     let testSet = CuckooSet(input)
     return { timer in 
         for value in input {
-            precondition(testSet.contains(value))
+            blackHole(testSet.contains(value))
         }
     }
 }
 
-benchmark.add(title: "CuckooDictionary<Int, Bool> Insert", input: [Int].self) { input in 
+benchmark.add(title: "set/remove", input: [Int].self) { input in
+    var testSet = CuckooSet(input)
+    return { timer in
+        for value in input {
+            blackHole(testSet.remove(value))
+        }
+    }
+}
+
+benchmark.add(title: "dict/insert", input: [Int].self) { input in
     var testDict = CuckooDictionary<Int, Bool>()
     return { timer in 
         for value in input {
@@ -48,7 +59,7 @@ benchmark.add(title: "CuckooDictionary<Int, Bool> Insert", input: [Int].self) { 
     }
 }
 
-benchmark.add(title: "CuckooDictionary<Int, Bool> Lookup", input: [Int].self) { input in 
+benchmark.add(title: "dict/lookup", input: [Int].self) { input in
     var testDict = CuckooDictionary<Int, Bool>(capacity: input.count * 2)
     for value in input {
         testDict[value] = .random()
