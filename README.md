@@ -5,7 +5,8 @@ A Swift package for open-addressed sets and dictionaries that use the
 
 ## Overview
 
-Import the `CuckooCollections` module to use two new data structures that feature constant-time lookups, insertions and removals:
+Import the `CuckooCollections` module to use two new data structures that feature 
+constant-time lookups, insertions and removals:
 * `CuckooSet`
 * `CuckooDictionary`
 
@@ -15,7 +16,7 @@ The hash function implementation is also open-source, the code is available
 
 ## Platforms
 
-This package is tested in continuous integration on the following platforms:
+This package was last tested on the following platforms:
 * Ubuntu 20.04
 * Windows Server 2019
 * macOS 11.5
@@ -25,11 +26,7 @@ This package is tested in continuous integration on the following platforms:
 
 ## Versioning
 
-As a Swift Package Manager project, this package uses semantic versioning rules.
-**All releases before `1.0.0` are considered pre-release.** Under pre-release rules,
-code-breaking changes may be introduced with a minor version bump. To avoid this, specify
-the version requirement in your package manifest as follows:
-
-```swift
-.package(url: "https://github.com/crichez/swift-cuckoo-collections", .upToNextMinor(from: "0.0.1"))
-```
+This project is no longer maintained, and is a read-only archive. The code within 
+is still a working cuckoo hash table implementation that may be useful for reference. 
+The poor time and memory performance of the hash table is the primary cause for discontinued 
+development.
